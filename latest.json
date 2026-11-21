@@ -1,24 +1,37 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-21T23:10:31Z",
+  "generated_at": "2026-11-21T23:16:06Z",
   "repo": "niosus/document-vault-releases",
   "releases_url": "https://github.com/niosus/document-vault-releases/releases",
   "appcast_url": "https://niosus.github.io/document-vault-releases/appcast.xml",
   "latest": null,
   "prerelease": {
-    "version": "0.2.0",
-    "tag": "v0.2.0",
-    "title": "Document Vault v0.2.0 (Unsigned Preview)",
+    "version": "0.2.1",
+    "tag": "v0.2.1",
+    "title": "Document Vault v0.2.1 (Unsigned Preview)",
     "prerelease": true,
     "signed": false,
-    "published_at": "2026-11-21T22:50:00Z",
-    "dmg_name": "Document-Vault-0.2.0-arm64-unsigned.dmg",
-    "dmg_url": "https://github.com/niosus/document-vault-releases/releases/download/v0.2.0/Document-Vault-0.2.0-arm64-unsigned.dmg",
-    "size_bytes": 370016062,
-    "notes": "Guided 3-step onboarding, fast native folder picker, and dark-mode document defaults.",
-    "release_url": "https://github.com/niosus/document-vault-releases/releases/tag/v0.2.0"
+    "published_at": "2026-11-21T23:12:18Z",
+    "dmg_name": "Document-Vault-0.2.1-arm64-unsigned.dmg",
+    "dmg_url": "https://github.com/niosus/document-vault-releases/releases/download/v0.2.1/Document-Vault-0.2.1-arm64-unsigned.dmg",
+    "size_bytes": 368635661,
+    "notes": "Enable Sparkle auto-updates via GitHub Pages.",
+    "release_url": "https://github.com/niosus/document-vault-releases/releases/tag/v0.2.1"
   },
   "history": [
+    {
+      "version": "0.2.1",
+      "tag": "v0.2.1",
+      "title": "Document Vault v0.2.1 (Unsigned Preview)",
+      "prerelease": true,
+      "signed": false,
+      "published_at": "2026-11-21T23:12:18Z",
+      "dmg_name": "Document-Vault-0.2.1-arm64-unsigned.dmg",
+      "dmg_url": "https://github.com/niosus/document-vault-releases/releases/download/v0.2.1/Document-Vault-0.2.1-arm64-unsigned.dmg",
+      "size_bytes": 368635661,
+      "notes": "Enable Sparkle auto-updates via GitHub Pages.",
+      "release_url": "https://github.com/niosus/document-vault-releases/releases/tag/v0.2.1"
+    },
     {
       "version": "0.2.0",
       "tag": "v0.2.0",

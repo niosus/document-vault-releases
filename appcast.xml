@@ -1,6 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<rss version="2.0">
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
   <channel>
     <title>Document Vault</title>
+    <item>
+      <title>Version 0.2.1</title>
+      <pubDate>Sat, 21 Nov 2026 23:11:49 +0000</pubDate>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <sparkle:channel>prerelease</sparkle:channel>
+      <description>Enable Sparkle auto-updates via GitHub Pages.</description>
+      <enclosure url="https://github.com/niosus/document-vault-releases/releases/download/v0.2.1/Document-Vault-0.2.1-arm64-unsigned.dmg" sparkle:version="0.2.1" sparkle:shortVersionString="0.2.1" length="368635661" type="application/octet-stream" sparkle:edSignature="w9DHQlaqJsVmE6+2g1S4IwQM3sFmyEmYrUOKMxsiU7eEmvKqXDz1I9wrlYdM7mFFVKRM4SINRbIdalALk6deDQ==" />
+    </item>
   </channel>
 </rss>
