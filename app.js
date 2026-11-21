@@ -3,7 +3,7 @@
 
   const THEME_STORAGE_KEY = "dv_site_theme";
   const DEFAULT_RELEASES_URL = "https://github.com/niosus/document-vault-releases/releases";
-  const DEFAULT_APPCAST_URL = "https://github.com/niosus/document-vault-releases/releases/latest/download/appcast.xml";
+  const DEFAULT_APPCAST_URL = "https://niosus.github.io/document-vault-releases/appcast.xml";
 
   let currentPayload = null;
   let activeReleaseTab = "latest";

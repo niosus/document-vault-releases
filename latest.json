@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-21T22:53:42Z",
+  "generated_at": "2026-11-21T23:10:31Z",
   "repo": "niosus/document-vault-releases",
   "releases_url": "https://github.com/niosus/document-vault-releases/releases",
-  "appcast_url": "https://github.com/niosus/document-vault-releases/releases/latest/download/appcast.xml",
+  "appcast_url": "https://niosus.github.io/document-vault-releases/appcast.xml",
   "latest": null,
   "prerelease": {
     "version": "0.2.0",

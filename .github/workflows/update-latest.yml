@@ -25,22 +25,26 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Generate latest.json from GitHub Releases
+      - name: Generate latest.json and sync appcast.xml from GitHub Releases
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           python3 scripts/generate_latest_json.py \
             --repo "${{ github.repository }}" \
-            --output latest.json
+            --output latest.json \
+            --appcast-output appcast.xml
 
-      - name: Commit and push updated latest.json
+      - name: Commit and push updated latest.json and appcast.xml
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add latest.json
+          if [ -f appcast.xml ]; then
+            git add appcast.xml
+          fi
           if git diff --cached --quiet; then
-            echo "latest.json unchanged."
+            echo "latest.json and appcast.xml unchanged."
             exit 0
           fi
-          git commit -m "Update latest.json [skip ci]"
+          git commit -m "Update latest.json and appcast.xml [skip ci]"
           git push
