@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Document Vault — Local AI Scan Organizer</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32x32.png?v=20261121j" />
+  <link rel="icon" type="image/png" sizes="16x16" href="./icons/favicon-16x16.png?v=20261121j" />
+  <link rel="shortcut icon" href="./icons/favicon-32x32.png?v=20261121j" />
+  <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png?v=20261121j" />
+  <meta name="theme-color" content="#f4f7fc" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#090e1a" media="(prefers-color-scheme: dark)" />
+  <script src="./demo-bootstrap.js"></script>
+  <script>
+    (() => {
+      try {
+        const saved = localStorage.getItem("dv_theme_mode");
+        const mode = saved === "light" || saved === "dark" ? saved : "auto";
+        const prefersDark = Boolean(
+          window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches
+        );
+        const theme = mode === "auto" ? (prefersDark ? "dark" : "light") : mode;
+        document.documentElement.dataset.themeMode = mode;
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.style.colorScheme = theme;
+        const invertSaved = localStorage.getItem("dv_invert_docs_dark");
+        document.documentElement.dataset.invertDocsDark = invertSaved === "false" ? "false" : "true";
+        const savedTab = sessionStorage.getItem("dv_active_tab");
+        if (savedTab === "vault" || savedTab === "review" || savedTab === "settings") {
+          document.documentElement.dataset.savedTab = savedTab;
+          if (savedTab !== "vault") {
+            document.documentElement.dataset.bootingTab = "true";
+          }
+        }
+      } catch {
+        // ignore storage or matchMedia access errors
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="./styles.css?v=20261121j" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="brand">
+        <span class="brand-icon" aria-hidden="true">
+          <img class="brand-icon-img" src="./icons/app-icon.png?v=20261121j" alt="" width="40" height="40" />
+        </span>
+        <div>
+          <div class="brand-title-row">
+            <h1>Document Vault</h1>
+            <span id="app-version-badge" class="app-version-badge" title="Application version"></span>
+          </div>
+          <span class="subtitle">Local MLX Vision organizer · Non-destructive filing</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="topbar-right">
+      <div class="vlm-pill-wrap">
+        <button id="vlm-pill" class="status-pill status-neutral status-pill-btn" type="button" title="Local MLX Vision model status — click for details" aria-haspopup="dialog" aria-expanded="false">
+          <span class="dot"></span>
+          <span id="vlm-pill-text">Checking Model…</span>
+          <span id="vlm-ram-badge" class="ram-badge hidden">
+            <span id="vlm-ram-label">in RAM</span>
+          </span>
+        </button>
+        <div id="vlm-popover" class="vlm-popover hidden" role="dialog" aria-label="Local Vision Model status"></div>
+      </div>
+
+      <div class="watcher-controls">
+        <label class="switch-label" title="Toggle real-time incoming folder watcher">
+          <input type="checkbox" id="watcher-toggle" />
+          <span class="switch-track"></span>
+          <span id="watcher-status-text">Watcher Off</span>
+        </label>
+        <span id="dump-pending-badge" class="muted-chip" title="Files waiting in incoming folder">0 pending</span>
+        <button id="scan-now-btn" class="btn btn-primary btn-sm" type="button">Scan Now</button>
+      </div>
+
+      <button id="open-welcome-guide-btn" class="icon-help-btn" type="button" title="Open Welcome Guide" aria-label="Open Welcome Guide">?</button>
+
+      <div id="theme-controls" class="theme-controls is-auto" role="group" aria-label="Theme selection">
+        <button id="theme-light-btn" class="theme-opt-btn" type="button" title="Switch to Light theme" aria-label="Switch to Light theme" aria-pressed="false">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4"></circle>
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
+          </svg>
+        </button>
+        <button id="theme-dark-btn" class="theme-opt-btn" type="button" title="Switch to Dark theme" aria-label="Switch to Dark theme" aria-pressed="false">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </button>
+        <button id="theme-auto-btn" class="theme-opt-btn theme-auto-btn hidden" type="button" title="Return to automatic system theme" aria-label="Return to automatic system theme" aria-pressed="true">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="2" y="3" width="20" height="14" rx="2"></rect>
+            <path d="M8 21h8M12 17v4"></path>
+          </svg>
+          <span>Auto</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div class="tabs-bar">
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-tab="vault" role="tab" aria-selected="true">Vault Browser</button>
+      <button class="tab" data-tab="review" role="tab" aria-selected="false">
+        Activity &amp; Review
+        <span id="review-badge" class="badge hidden">0</span>
+      </button>
+      <button class="tab" data-tab="settings" role="tab" aria-selected="false">Settings</button>
+      <span id="tab-indicator" class="tab-indicator" aria-hidden="true"></span>
+    </nav>
+    <button id="global-drop-indicator" class="drop-hint-pill" type="button" title="Drop PDF or image files anywhere on this page, or click to select files">
+      <span class="drop-hint-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 16V4M7 9l5-5 5 5"></path>
+          <path d="M4 20h16"></path>
+        </svg>
+      </span>
+      <span class="drop-hint-text">Drop files anywhere to queue · Click to browse</span>
+    </button>
+    <input id="global-file-input" type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff" hidden />
+  </div>
+
+  <div id="vlm-status-banner" class="vlm-status-banner hidden" role="status" aria-live="polite"></div>
+
+  <div id="global-drop-overlay" class="global-drop-overlay hidden" aria-hidden="true">
+    <div class="global-drop-card">
+      <div class="dropzone-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="17 8 12 3 7 8"></polyline>
+          <line x1="12" y1="3" x2="12" y2="15"></line>
+        </svg>
+      </div>
+      <h2>Drop documents anywhere to add to queue</h2>
+      <p>Supports PDF, PNG, JPG, and TIFF. Processed items are archived to <code>_processed</code> in your ingestion folder.</p>
+    </div>
+  </div>
+
+  <div id="watcher-live-banner" class="macos-notif hidden" role="status" aria-live="polite">
+    <div class="macos-notif-head">
+      <div class="macos-notif-icon" aria-hidden="true">
+        <span id="live-banner-dot" class="pulse-dot"></span>
+        <img class="notif-icon-img" src="./icons/app-icon.png?v=20261121j" alt="" width="34" height="34" />
+      </div>
+      <div class="macos-notif-text">
+        <div id="live-banner-file" class="macos-notif-title">Processing…</div>
+        <div id="live-banner-stage" class="macos-notif-sub"></div>
+        <div id="live-banner-progress" class="progress-bar-track live-banner-progress hidden">
+          <div id="live-banner-progress-bar" class="progress-bar-fill" style="width:0%"></div>
+        </div>
+      </div>
+      <div class="macos-notif-actions">
+        <button id="toggle-queue-btn" class="btn btn-secondary btn-xs" type="button">Queue (0)</button>
+        <button id="stop-scan-btn" class="btn btn-ghost-danger btn-xs hidden" type="button">Stop</button>
+        <button id="clear-queue-btn" class="btn btn-secondary btn-xs hidden" type="button" title="Dismiss notification">×</button>
+      </div>
+    </div>
+    <div id="scan-queue-panel" class="scan-queue-panel hidden"></div>
+  </div>
+
+  <main class="container">
+    <div id="tab-panels-stage" class="tab-panels-stage">
+    <!-- TAB 1: VAULT BROWSER (DEFAULT) -->
+    <section id="tab-vault" class="tab-panel active">
+      <div class="panel-header">
+        <div>
+          <h2>Vault Browser</h2>
+          <p class="muted">Browse recently added documents, switch between tags, or search extracted text. Drop files anywhere on the page to ingest.</p>
+        </div>
+        <div class="filter-bar">
+          <div class="search-field-wrap">
+            <svg class="search-field-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input id="vault-search" type="search" placeholder="Search documents or text…" />
+          </div>
+          <select id="vault-filter-year" aria-label="Filter by year">
+            <option value="">All Years</option>
+          </select>
+          <select id="vault-sort" aria-label="Sort documents">
+            <option value="recent" selected>Recently Added</option>
+            <option value="date_desc">Document Date (Newest)</option>
+            <option value="date_asc">Document Date (Oldest)</option>
+            <option value="title_asc">Title (A–Z)</option>
+          </select>
+          <button id="refresh-vault-btn" class="btn btn-secondary btn-sm" type="button">Refresh</button>
+        </div>
+      </div>
+
+      <div class="vault-tag-nav" aria-label="Quick tag navigation">
+        <span class="vault-tag-nav-label">Tags</span>
+        <div id="vault-tag-bar" class="vault-tag-bar"></div>
+      </div>
+
+      <div id="vault-grid-stage" class="vault-grid-stage">
+        <div id="vault-float-sentinel" class="vault-float-sentinel" aria-hidden="true"></div>
+        <div id="vault-grid-float" class="vault-grid-float hidden">
+          <div class="vault-float-pill" role="region" aria-label="Document view and selection">
+            <span id="vault-results-status" class="vault-results-status muted"></span>
+            <button id="vault-select-all-btn" class="btn btn-secondary btn-xs" type="button">Select All</button>
+            <button id="vault-clear-sel-btn" class="btn btn-secondary btn-xs hidden" type="button">Clear</button>
+          </div>
+        </div>
+        <div id="vault-anim-layer" class="vault-anim-layer" aria-hidden="true"></div>
+        <div id="vault-list" class="vault-grid"></div>
+      </div>
+
+      <div id="vault-load-more-bar" class="vault-load-more-bar hidden">
+        <span id="vault-load-more-status" class="muted"></span>
+        <button id="vault-load-more-btn" class="btn btn-secondary btn-sm" type="button">Load More</button>
+      </div>
+      <div id="vault-scroll-sentinel" class="vault-scroll-sentinel" aria-hidden="true"></div>
+
+      <div id="vault-batch-bar" class="batch-action-bar hidden" role="region" aria-label="Batch document actions">
+        <div class="batch-bar-left">
+          <span id="batch-selection-count" class="batch-count-pill">0 selected</span>
+          <button id="batch-select-all-btn" class="btn btn-secondary btn-xs" type="button">Select All</button>
+          <button id="batch-clear-sel-btn" class="btn btn-secondary btn-xs" type="button">Clear</button>
+        </div>
+        <div class="batch-bar-actions">
+          <button id="batch-reclassify-btn" class="btn btn-primary btn-sm" type="button">Reclassify with AI</button>
+          <button id="batch-move-btn" class="btn btn-secondary btn-sm" type="button">Move / Set Tag…</button>
+          <button id="batch-download-btn" class="btn btn-secondary btn-sm" type="button">Download ZIP</button>
+          <button id="batch-delete-btn" class="btn btn-ghost-danger btn-sm" type="button">Delete Selected…</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: ACTIVITY & REVIEW -->
+    <section id="tab-review" class="tab-panel">
+      <div class="panel-header">
+        <div>
+          <h2>Activity &amp; Review</h2>
+          <p class="muted">Pending scans requiring review (low confidence, undated, new category, or duplicate) alongside recent filing and watcher activity. Originals remain untouched until approved.</p>
+        </div>
+        <button id="refresh-review-btn" class="btn btn-secondary btn-sm" type="button">Refresh</button>
+      </div>
+
+      <div id="review-list" class="card-stack"></div>
+
+      <section class="activity-box">
+        <div class="activity-header">
+          <div class="activity-title-group">
+            <h3>Filed &amp; Watcher Activity</h3>
+            <span id="activity-count-chip" class="muted-chip">0</span>
+          </div>
+          <div class="activity-controls">
+            <div id="activity-filter-pills" class="segmented-pills" role="group" aria-label="Filter activity">
+              <button type="button" class="seg-pill active" data-filter="all">All</button>
+              <button type="button" class="seg-pill" data-filter="filed">Filed</button>
+              <button type="button" class="seg-pill" data-filter="attention">Review &amp; System</button>
+            </div>
+            <span id="last-scan-label" class="muted"></span>
+          </div>
+        </div>
+        <ul id="activity-log" class="activity-log"></ul>
+      </section>
+    </section>
+
+    <!-- TAB 3: SETTINGS -->
+    <section id="tab-settings" class="tab-panel">
+      <div class="panel-header">
+        <div>
+          <h2>Settings</h2>
+          <p class="muted">Configure your folders, taxonomy, filename masks, and local MLX vision models.</p>
+        </div>
+      </div>
+
+      <div id="settings-float-sentinel" class="settings-float-sentinel" aria-hidden="true"></div>
+      <div id="settings-save-float" class="settings-save-float">
+        <div id="settings-save-status" class="settings-float-pill settings-save-status" role="status" aria-live="polite">Changes save automatically</div>
+      </div>
+
+      <form id="settings-form" class="settings-layout">
+        <div class="settings-card">
+          <div class="settings-card-head">
+            <span class="settings-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+              </svg>
+            </span>
+            <div>
+              <h3>Folders &amp; Watcher</h3>
+              <p class="muted">Where new scans arrive and where your organized documents are filed.</p>
+            </div>
+          </div>
+
+          <label class="field">
+            <span>Incoming Folder <small class="muted">(Monitored drop box for unsorted scans)</small></span>
+            <div class="path-input-group">
+              <input id="set-dump-dir" type="text" required />
+              <button id="browse-dump-btn" class="btn btn-secondary btn-sm" type="button">Browse…</button>
+              <button id="settings-open-dump-btn" class="btn btn-secondary btn-sm" type="button">Open</button>
+            </div>
+            <span class="muted" style="font-size:11.5px;">Drop PDFs or photos here from Finder or your scanner app.</span>
+          </label>
+
+          <div class="setting-toggle-row">
+            <div>
+              <div class="toggle-title">Watch Incoming Folder Automatically</div>
+              <div class="muted">Automatically scan and file new files added to your Incoming Folder.</div>
+            </div>
+            <label class="switch-label">
+              <input id="set-watcher-enabled" type="checkbox" />
+              <span class="switch-track"></span>
+            </label>
+          </div>
+
+          <label class="field">
+            <span>Vault Folder <small class="muted">(Where neatly organized documents are saved)</small></span>
+            <div class="path-input-group">
+              <input id="set-vault-dir" type="text" required />
+              <button id="settings-open-vault-btn" class="btn btn-secondary btn-sm" type="button">Open</button>
+            </div>
+            <span class="muted" style="font-size:11.5px;">Documents are copied and sorted here by category and year.</span>
+          </label>
+
+          <div class="vault-actions-row">
+            <button id="switch-vault-btn" class="btn btn-secondary btn-sm" type="button">Switch / Connect Vault…</button>
+          </div>
+
+          <div class="prompt-advanced-wrap">
+            <div class="prompt-advanced-head">
+              <button id="toggle-folder-advanced-btn" class="btn-link" type="button">Advanced Folder &amp; Sync Options ▸</button>
+            </div>
+
+            <div id="folder-advanced-panel" class="full-prompt-panel hidden">
+              <div class="field" style="margin-bottom:10px;">
+                <span>Vault Path &amp; Metadata</span>
+                <div class="path-input-group">
+                  <button id="browse-vault-btn" class="btn btn-secondary btn-sm" type="button">Change Vault Folder…</button>
+                  <button id="reconstruct-vault-btn" class="btn btn-secondary btn-sm" type="button">Reconstruct / Sync from Disk</button>
+                </div>
+                <div class="vault-db-info">
+                  <span class="muted">Vault config:</span>
+                  <code id="settings-db-path">…</code>
+                </div>
+                <span class="muted" style="font-size:11.5px;">Use Reconstruct / Sync if you moved or renamed files manually in Finder.</span>
+              </div>
+
+              <div class="field-row">
+                <label class="field" style="flex:1;">
+                  <span>Processed Archive Subfolder</span>
+                  <input id="set-processed-name" type="text" required />
+                </label>
+                <label class="field small-field">
+                  <span>Debounce (sec)</span>
+                  <input id="set-debounce" type="number" min="0.5" max="30" step="0.5" />
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <div class="settings-card-head">
+            <span class="settings-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+              </svg>
+            </span>
+            <div>
+              <h3>MLX Vision &amp; Speed</h3>
+              <p class="muted">Download and run local MLX vision models on Apple Silicon — no external app needed.</p>
+            </div>
+          </div>
+
+          <label class="field">
+            <span>Vision Model</span>
+            <div class="path-input-group">
+              <select id="set-vlm-model" style="flex:1;">
+                <option value="">-- Select a model --</option>
+              </select>
+              <button id="download-model-btn" class="btn btn-primary btn-sm hidden" type="button">Download</button>
+              <button id="unload-model-btn" class="btn btn-secondary btn-sm hidden" type="button" title="Free unified memory immediately (auto-unloads after 10 min idle)">Unload RAM</button>
+              <button id="delete-model-btn" class="btn btn-ghost-danger btn-sm hidden" type="button" title="Remove cached model files from disk">Delete</button>
+            </div>
+            <div id="model-ram-warning" class="model-ram-warning hidden"></div>
+          </label>
+
+          <div id="model-download-box" class="model-download-box hidden">
+            <div class="model-download-head">
+              <span id="model-download-label">Downloading model…</span>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span id="model-download-pct" class="muted">0%</span>
+                <button id="cancel-download-btn" class="btn btn-ghost-danger btn-xs hidden" type="button">Cancel</button>
+              </div>
+            </div>
+            <div class="progress-bar-track">
+              <div id="model-download-bar" class="progress-bar-fill" style="width:0%"></div>
+            </div>
+            <div id="model-download-file" class="muted" style="font-size:11px; margin-top:4px;"></div>
+          </div>
+
+          <label class="field">
+            <span>Model Reasoning (Thinking)</span>
+            <select id="set-thinking-mode">
+              <option value="off">Off — Fast (Recommended)</option>
+              <option value="low">Low — Balanced</option>
+              <option value="on">On — Deep (Slower)</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span class="slider-header">
+              <span>Auto-File Confidence Threshold</span>
+              <span id="threshold-val" class="tag tag-ok">0.75</span>
+            </span>
+            <input id="set-threshold" class="range-slider" type="range" min="0" max="1" step="0.05" />
+          </label>
+
+          <label class="field">
+            <span>Extracted Title Language</span>
+            <select id="set-title-language">
+              <option value="document">Keep document's original language</option>
+              <option value="english">Translate title to English</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Custom Filing Instructions (Optional)</span>
+            <textarea id="set-custom-instructions" class="prompt-textarea" rows="2" placeholder="e.g. Include invoice/account numbers in titles. Classify dental bills under Medical."></textarea>
+            <span class="muted" style="font-size:11.5px;">Appended safely to the built-in prompt without changing the required JSON output structure.</span>
+          </label>
+
+          <div class="prompt-advanced-wrap">
+            <div class="prompt-advanced-head">
+              <button id="toggle-full-prompt-btn" class="btn-link" type="button">View / Edit Full System Prompt ▸</button>
+              <span id="prompt-override-badge" class="tag hidden">Custom override</span>
+            </div>
+
+            <div id="full-prompt-panel" class="full-prompt-panel hidden">
+              <div class="prompt-warning-box" role="note">
+                <strong>Caution:</strong> Modifying the full system prompt overrides built-in filing rules.
+                Removing or renaming the 6 required JSON keys (<code>date</code>, <code>category</code>,
+                <code>suggested_new_category</code>, <code>title</code>, <code>confidence</code>, <code>reason</code>)
+                conflicts with JSON schema enforcement and can cause extraction errors. Removing
+                <code>{categories}</code>, <code>{title_language_instruction}</code>, or <code>YYYY-MM-DD</code>
+                rules can degrade tag matching, title language, or date parsing.
+              </div>
+
+              <label class="field" style="margin-bottom:8px;">
+                <span class="slider-header">
+                  <span>Full System Prompt Template</span>
+                  <button id="reset-system-prompt-btn" class="btn btn-secondary btn-xs" type="button">Reset to Default</button>
+                </span>
+                <textarea id="set-system-prompt-override" class="prompt-textarea prompt-textarea-mono" rows="8"></textarea>
+              </label>
+
+              <div class="field" style="margin-bottom:0;">
+                <span class="muted" style="font-size:11.5px;">Effective Prompt Preview (with placeholders &amp; custom instructions applied)</span>
+                <pre id="effective-prompt-preview" class="prompt-preview-box"></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-card settings-card-wide">
+          <div class="settings-card-head">
+            <span class="settings-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                <path d="M2 17l10 5 10-5"></path>
+                <path d="M2 12l10 5 10-5"></path>
+              </svg>
+            </span>
+            <div>
+              <h3>Taxonomy &amp; Naming Masks</h3>
+              <p class="muted">Define top-level Vault categories and how folders and filenames are formatted.</p>
+            </div>
+          </div>
+
+          <div class="field">
+            <span>Guided Categories</span>
+            <div id="category-chips" class="chip-list"></div>
+            <div class="inline-input" style="max-width:360px;">
+              <input id="new-category-input" type="text" placeholder="Add category (e.g. Travel)" />
+              <button id="add-category-btn" class="btn btn-secondary btn-sm" type="button">Add</button>
+            </div>
+          </div>
+
+          <div class="masks-builder-grid">
+            <div class="mask-pool-box">
+              <div class="mask-pool-head">
+                <span class="mask-pool-title">Template Blocks</span>
+                <span id="mask-pool-hint" class="muted mask-pool-hint">Drag blocks into either template below, or click to add to Folder Tree</span>
+              </div>
+              <div id="mask-block-pool" class="mask-palette" aria-label="Available template blocks"></div>
+            </div>
+
+            <div class="field mask-builder-field">
+              <div class="mask-field-header">
+                <span>Folder Tree Template <small class="muted">(click separators to change)</small></span>
+                <button id="toggle-tree-raw-btn" class="btn btn-secondary btn-xs mask-raw-toggle" type="button">Edit as text</button>
+              </div>
+              <div id="tree-mask-builder" class="mask-builder" data-mask-kind="tree">
+                <div id="tree-mask-canvas" class="mask-canvas is-active-target" tabindex="0" role="list" aria-label="Folder tree template blocks"></div>
+              </div>
+              <input id="set-tree-template" class="mask-raw-input hidden" type="text" aria-label="Folder Tree Template" />
+            </div>
+
+            <div class="field mask-builder-field">
+              <div class="mask-field-header">
+                <span>Filename Mask <small class="muted">(click separators to change)</small></span>
+                <button id="toggle-filename-raw-btn" class="btn btn-secondary btn-xs mask-raw-toggle" type="button">Edit as text</button>
+              </div>
+              <div id="filename-mask-builder" class="mask-builder" data-mask-kind="filename">
+                <div id="filename-mask-canvas" class="mask-canvas" tabindex="0" role="list" aria-label="Filename mask blocks"></div>
+              </div>
+              <input id="set-filename-mask" class="mask-raw-input hidden" type="text" aria-label="Filename Mask" />
+            </div>
+
+            <div class="masks-meta-row">
+              <label class="field">
+                <span>Date Format</span>
+                <select id="set-date-format">
+                  <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+                  <option value="YYYY_MM_DD">YYYY_MM_DD</option>
+                  <option value="YYYY.MM.DD">YYYY.MM.DD</option>
+                  <option value="YYYYMMDD">YYYYMMDD</option>
+                  <option value="DD-MM-YYYY">DD-MM-YYYY</option>
+                  <option value="DD_MM_YYYY">DD_MM_YYYY</option>
+                  <option value="DD.MM.YYYY">DD.MM.YYYY</option>
+                </select>
+              </label>
+
+              <div class="path-preview-box">
+                <span class="muted">Example Vault Path:</span>
+                <code id="settings-path-preview">Finance/2026/2026-03-14 Acme Utility Bill.pdf</code>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-card settings-card-wide">
+          <div class="settings-card-head">
+            <span class="settings-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="9"></circle>
+                <path d="M12 3v18"></path>
+                <path d="M12 7l5 5-5 5"></path>
+              </svg>
+            </span>
+            <div>
+              <h3>Appearance</h3>
+              <p class="muted">Customize how document pages are displayed in dark mode.</p>
+            </div>
+          </div>
+
+          <div class="setting-toggle-row">
+            <div>
+              <div class="toggle-title">Invert White Documents in Dark Mode</div>
+              <div class="muted">Inverts bright white scan and PDF pages to dark surfaces with light text when dark mode is active.</div>
+            </div>
+            <label class="switch-label">
+              <input id="set-invert-docs-dark" type="checkbox" />
+              <span class="switch-track"></span>
+            </label>
+          </div>
+        </div>
+      </form>
+
+      <div class="settings-footer-bar">
+        <span class="muted">Document Vault · Local Apple Silicon AI</span>
+        <div class="settings-footer-links">
+          <button id="settings-welcome-guide-btn" class="btn-link" type="button">Welcome Guide</button>
+          <span class="muted" aria-hidden="true">·</span>
+          <button id="open-licenses-btn" class="btn-link" type="button">Third-Party Licenses</button>
+        </div>
+      </div>
+    </section>
+    </div>
+  </main>
+
+  <!-- Initial Setup / Welcome Wizard / Connect Vault Modal -->
+  <div id="setup-modal" class="modal modal-setup hidden" role="dialog" aria-modal="true" aria-labelledby="setup-modal-title">
+    <div id="setup-modal-backdrop" class="modal-backdrop"></div>
+    <div class="modal-card modal-card-setup">
+      <div class="modal-header">
+        <div class="setup-header-left">
+          <h3 id="setup-modal-title">Welcome to Document Vault</h3>
+          <div id="setup-stepper" class="setup-stepper" role="tablist" aria-label="Onboarding steps">
+            <button type="button" class="setup-step-pill is-active" data-step="1">
+              <span class="setup-step-num">1</span>
+              <span>How It Works</span>
+            </button>
+            <span class="setup-step-sep" aria-hidden="true">›</span>
+            <button type="button" class="setup-step-pill" data-step="2">
+              <span class="setup-step-num">2</span>
+              <span>Vault &amp; Incoming</span>
+            </button>
+            <span class="setup-step-sep" aria-hidden="true">›</span>
+            <button type="button" class="setup-step-pill" data-step="3">
+              <span class="setup-step-num">3</span>
+              <span>Vision AI Model</span>
+            </button>
+          </div>
+        </div>
+        <button id="setup-close-btn" class="btn btn-secondary btn-sm hidden" type="button">Close</button>
+      </div>
+      <div class="modal-body">
+        <p id="setup-switch-intro" class="setup-intro muted hidden">
+          Choose an existing Vault folder to load or reconstruct your documents and tags, or pick a new folder to initialize a fresh Vault.
+          Vault config (<code>.document_vault/vault.json</code>) and per-document metadata (<code>.document_vault/meta/</code>) live inside your Vault folder, while the search index and previews stay local on this Mac.
+        </p>
+
+        <form id="setup-form" class="setup-form">
+          <div id="setup-steps-stage" class="setup-steps-stage">
+          <!-- STEP 1: HOW IT WORKS -->
+          <div id="setup-step-1" class="setup-step-panel">
+            <div class="onboard-hero">
+              <div class="onboard-hero-badge">On-Device Apple Silicon Document Organizer</div>
+              <h4>Turn messy PDFs &amp; scans into a clean, searchable folder tree — automatically.</h4>
+              <p class="muted">Drop files right in this window or save them into your monitored Incoming folder. Local AI reads, dates, renames, and files each document without ever leaving your Mac.</p>
+            </div>
+
+            <div class="onboard-pipeline" aria-label="How Document Vault works">
+              <div class="onboard-pipe-card">
+                <div class="onboard-pipe-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                    <path d="M12 11v6M9.5 13.5L12 11l2.5 2.5"></path>
+                  </svg>
+                </div>
+                <div class="onboard-pipe-step">1. Drop or Watch Incoming</div>
+                <p>Drag scans anywhere in the app, or save them into your <strong>monitored Incoming folder</strong> from your scanner or Finder.</p>
+              </div>
+              <div class="onboard-pipe-arrow" aria-hidden="true">→</div>
+              <div class="onboard-pipe-card">
+                <div class="onboard-pipe-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                  </svg>
+                </div>
+                <div class="onboard-pipe-step">2. Local MLX Vision AI</div>
+                <p>Runs locally on Apple Silicon to extract the document date, sender, title, and category — zero cloud upload.</p>
+              </div>
+              <div class="onboard-pipe-arrow" aria-hidden="true">→</div>
+              <div class="onboard-pipe-card">
+                <div class="onboard-pipe-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 11l3 3L22 4"></path>
+                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+                  </svg>
+                </div>
+                <div class="onboard-pipe-step">3. Filed &amp; Review-Safe</div>
+                <p>Copies cleanly into <code>Category/Year/</code> in your Vault. Uncertain or duplicate scans pause in <strong>Review</strong> for approval.</p>
+              </div>
+            </div>
+
+            <div class="onboard-pillars">
+              <span class="onboard-pillar-chip">100% Private &amp; Offline-Capable</span>
+              <span class="onboard-pillar-chip">Plain Folders &amp; Standard PDFs</span>
+              <span class="onboard-pillar-chip">Originals Archived Safely</span>
+            </div>
+
+            <div class="setup-footer">
+              <button id="setup-next-1-btn" class="btn btn-primary" type="button">Get Started →</button>
+            </div>
+          </div>
+
+          <!-- STEP 2: VAULT & INCOMING FOLDER -->
+          <div id="setup-step-2" class="setup-step-panel hidden">
+            <div id="setup-vault-presets-wrap" class="setup-presets-wrap">
+              <span class="setup-presets-label">Vault Folder <small class="muted">(Where neatly organized documents live)</small></span>
+              <div id="setup-vault-presets" class="setup-preset-pills" role="group" aria-label="Vault folder presets"></div>
+            </div>
+
+            <label class="field">
+              <span id="setup-vault-field-label" class="hidden">Vault Folder</span>
+              <div class="path-input-group">
+                <input id="setup-vault-dir" type="text" required placeholder="/Users/you/Documents/Document Vault" />
+                <button id="setup-browse-vault-btn" class="btn btn-secondary btn-sm hidden" type="button">Browse…</button>
+              </div>
+            </label>
+
+            <div id="setup-inspect-box" class="setup-inspect-box inspect-new">
+              <div id="setup-inspect-title" class="setup-inspect-title">Checking folder…</div>
+              <div id="setup-inspect-detail" class="setup-inspect-detail muted"></div>
+              <div id="setup-inspect-tags" class="tag-row"></div>
+            </div>
+
+            <div id="setup-dump-presets-wrap" class="setup-presets-wrap">
+              <span class="setup-presets-label">Incoming Folder <small class="muted">(Monitored drop box for unsorted scans)</small></span>
+              <div id="setup-dump-presets" class="setup-preset-pills" role="group" aria-label="Incoming folder presets"></div>
+            </div>
+
+            <label class="field">
+              <span id="setup-dump-field-label" class="hidden">Incoming Folder (Optional)</span>
+              <div class="path-input-group">
+                <input id="setup-dump-dir" type="text" placeholder="/Users/you/Documents/Document Vault Incoming" />
+                <button id="setup-browse-dump-btn" class="btn btn-secondary btn-sm hidden" type="button">Browse…</button>
+              </div>
+              <span class="muted" style="font-size:11.5px;">Drop PDFs or scan directly here from Finder. Processed originals are safely moved to <code>_processed</code>.</span>
+            </label>
+
+            <div id="setup-watcher-row" class="setting-toggle-row setup-watcher-row">
+              <div>
+                <div class="toggle-title">Watch Incoming folder automatically</div>
+                <div class="muted">Runs in the background and auto-starts as soon as your Vision Model is ready.</div>
+              </div>
+              <label class="switch-label">
+                <input id="setup-watcher-enabled" type="checkbox" checked />
+                <span class="switch-track"></span>
+              </label>
+            </div>
+
+            <div id="setup-step2-footer" class="setup-footer setup-footer-split">
+              <button id="setup-back-2-btn" class="btn btn-secondary" type="button">← Back</button>
+              <button id="setup-next-2-btn" class="btn btn-primary" type="button">Next: Vision AI Model →</button>
+            </div>
+          </div>
+
+          <!-- STEP 3: LOCAL VISION AI MODEL (and compact model row in switch mode) -->
+          <div id="setup-step-3" class="setup-step-panel hidden">
+            <div class="setup-model-head">
+              <div>
+                <h4 id="setup-model-heading" style="margin:0 0 2px;">Choose Your Local Vision Model</h4>
+                <p id="setup-ram-note" class="muted" style="margin:0; font-size:12.5px;">Detecting Apple Silicon unified memory…</p>
+              </div>
+            </div>
+
+            <div id="setup-model-cards" class="setup-model-cards" role="radiogroup" aria-label="Local MLX Vision models"></div>
+
+            <label id="setup-select-fallback-field" class="field">
+              <span>Local MLX Vision Model</span>
+              <div class="path-input-group">
+                <select id="setup-vlm-model" style="flex:1;">
+                  <option value="">-- Select a model (optional) --</option>
+                </select>
+                <button id="setup-download-model-btn" class="btn btn-secondary btn-sm hidden" type="button">Download</button>
+              </div>
+            </label>
+
+            <div id="setup-download-box" class="model-download-box hidden">
+              <div class="model-download-head">
+                <span id="setup-download-label">Downloading model…</span>
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <span id="setup-download-pct" class="muted">0%</span>
+                  <button id="setup-cancel-download-btn" class="btn btn-ghost-danger btn-xs hidden" type="button">Cancel</button>
+                </div>
+              </div>
+              <div class="progress-bar-track">
+                <div id="setup-download-bar" class="progress-bar-fill" style="width:0%"></div>
+              </div>
+              <div id="setup-download-file" class="muted" style="font-size:11px; margin-top:4px;"></div>
+            </div>
+            <div id="setup-download-status" class="muted" style="font-size:11.5px; margin-top:4px;"></div>
+
+            <div class="setup-footer setup-footer-split">
+              <div class="setup-footer-left">
+                <button id="setup-back-3-btn" class="btn btn-secondary" type="button">← Back</button>
+                <button id="setup-cancel-btn" class="btn btn-secondary hidden" type="button">Cancel</button>
+              </div>
+              <div class="setup-footer-right">
+                <button id="setup-skip-model-btn" class="btn btn-secondary hidden" type="button">Skip Model for Now</button>
+                <button id="setup-submit-btn" class="btn btn-primary" type="submit">Open Vault</button>
+              </div>
+            </div>
+          </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for Vault preview / edit -->
+  <div id="doc-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop"></div>
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modal-title">Document Details</h3>
+        <button id="modal-close" class="btn btn-secondary btn-sm" type="button">Close</button>
+      </div>
+      <div id="modal-body" class="modal-body"></div>
+    </div>
+  </div>
+
+  <div id="toast-container" class="toast-container"></div>
+  <script src="./demo-server.js"></script>
+  <script src="./app.js?v=20261121j"></script>
+</body>
+</html>

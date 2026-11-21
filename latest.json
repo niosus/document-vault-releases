@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-11-21T22:53:42Z",
+  "repo": "niosus/document-vault-releases",
+  "releases_url": "https://github.com/niosus/document-vault-releases/releases",
+  "appcast_url": "https://github.com/niosus/document-vault-releases/releases/latest/download/appcast.xml",
+  "latest": null,
+  "prerelease": {
+    "version": "0.2.0",
+    "tag": "v0.2.0",
+    "title": "Document Vault v0.2.0 (Unsigned Preview)",
+    "prerelease": true,
+    "signed": false,
+    "published_at": "2026-11-21T22:50:00Z",
+    "dmg_name": "Document-Vault-0.2.0-arm64-unsigned.dmg",
+    "dmg_url": "https://github.com/niosus/document-vault-releases/releases/download/v0.2.0/Document-Vault-0.2.0-arm64-unsigned.dmg",
+    "size_bytes": 370016062,
+    "notes": "Guided 3-step onboarding, fast native folder picker, and dark-mode document defaults.",
+    "release_url": "https://github.com/niosus/document-vault-releases/releases/tag/v0.2.0"
+  },
+  "history": [
+    {
+      "version": "0.2.0",
+      "tag": "v0.2.0",
+      "title": "Document Vault v0.2.0 (Unsigned Preview)",
+      "prerelease": true,
+      "signed": false,
+      "published_at": "2026-11-21T22:50:00Z",
+      "dmg_name": "Document-Vault-0.2.0-arm64-unsigned.dmg",
+      "dmg_url": "https://github.com/niosus/document-vault-releases/releases/download/v0.2.0/Document-Vault-0.2.0-arm64-unsigned.dmg",
+      "size_bytes": 370016062,
+      "notes": "Guided 3-step onboarding, fast native folder picker, and dark-mode document defaults.",
+      "release_url": "https://github.com/niosus/document-vault-releases/releases/tag/v0.2.0"
+    },
+    {
+      "version": "0.1.3",
+      "tag": "v0.1.3",
+      "title": "Document Vault v0.1.3 (Unsigned Preview)",
+      "prerelease": true,
+      "signed": false,
+      "published_at": "2026-11-21T20:50:43Z",
+      "dmg_name": "Document-Vault-0.1.3-arm64-unsigned.dmg",
+      "dmg_url": "https://github.com/niosus/document-vault-releases/releases/download/v0.1.3/Document-Vault-0.1.3-arm64-unsigned.dmg",
+      "size_bytes": 372946327,
+      "notes": "Initial preview build for friends.",
+      "release_url": "https://github.com/niosus/document-vault-releases/releases/tag/v0.1.3"
+    }
+  ]
+}
