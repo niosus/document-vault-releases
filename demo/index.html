@@ -4,10 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Document Vault — Local AI Scan Organizer</title>
-  <link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32x32.png?v=20261121j" />
-  <link rel="icon" type="image/png" sizes="16x16" href="./icons/favicon-16x16.png?v=20261121j" />
-  <link rel="shortcut icon" href="./icons/favicon-32x32.png?v=20261121j" />
-  <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png?v=20261121j" />
+  <link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32x32.png?v=20261122a" />
+  <link rel="icon" type="image/png" sizes="16x16" href="./icons/favicon-16x16.png?v=20261122a" />
+  <link rel="shortcut icon" href="./icons/favicon-32x32.png?v=20261122a" />
+  <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png?v=20261122a" />
   <meta name="theme-color" content="#f4f7fc" media="(prefers-color-scheme: light)" />
   <meta name="theme-color" content="#090e1a" media="(prefers-color-scheme: dark)" />
   <script src="./demo-bootstrap.js"></script>
@@ -37,14 +37,14 @@
       }
     })();
   </script>
-  <link rel="stylesheet" href="./styles.css?v=20261121j" />
+  <link rel="stylesheet" href="./styles.css?v=20261123c" />
 </head>
 <body>
   <header class="topbar">
     <div class="topbar-left">
       <div class="brand">
         <span class="brand-icon" aria-hidden="true">
-          <img class="brand-icon-img" src="./icons/app-icon.png?v=20261121j" alt="" width="40" height="40" />
+          <img class="brand-icon-img" src="./icons/app-icon.png?v=20261122a" alt="" width="40" height="40" />
         </span>
         <div>
           <div class="brand-title-row">
@@ -57,6 +57,13 @@
     </div>
 
     <div class="topbar-right">
+      <button id="license-pill" class="license-pill hidden" type="button" title="Free tier usage — click to upgrade or activate a license">
+        <span id="license-pill-text">Free · 0 / 30</span>
+        <span class="license-pill-bar" aria-hidden="true">
+          <span id="license-pill-fill" class="license-pill-fill" style="width:0%"></span>
+        </span>
+      </button>
+
       <div class="vlm-pill-wrap">
         <button id="vlm-pill" class="status-pill status-neutral status-pill-btn" type="button" title="Local MLX Vision model status — click for details" aria-haspopup="dialog" aria-expanded="false">
           <span class="dot"></span>
@@ -145,7 +152,7 @@
     <div class="macos-notif-head">
       <div class="macos-notif-icon" aria-hidden="true">
         <span id="live-banner-dot" class="pulse-dot"></span>
-        <img class="notif-icon-img" src="./icons/app-icon.png?v=20261121j" alt="" width="34" height="34" />
+        <img class="notif-icon-img" src="./icons/app-icon.png?v=20261122a" alt="" width="34" height="34" />
       </div>
       <div class="macos-notif-text">
         <div id="live-banner-file" class="macos-notif-title">Processing…</div>
@@ -189,14 +196,21 @@
             <option value="date_asc">Document Date (Oldest)</option>
             <option value="title_asc">Title (A–Z)</option>
           </select>
+          <button id="vault-needs-check-btn" class="btn btn-secondary btn-sm vault-needs-check-btn hidden" type="button" title="Filter documents needing date or label check"></button>
+          <button id="vault-sug-filter-chip" class="btn btn-secondary btn-sm vault-sug-filter-chip hidden" type="button" title="Click to clear suggested label filter"></button>
           <button id="refresh-vault-btn" class="btn btn-secondary btn-sm" type="button">Refresh</button>
         </div>
       </div>
 
       <div class="vault-tag-nav" aria-label="Quick tag navigation">
-        <span class="vault-tag-nav-label">Tags</span>
-        <div id="vault-tag-bar" class="vault-tag-bar"></div>
+        <div class="vault-tag-row">
+          <span class="vault-tag-nav-label">Labels</span>
+          <div id="vault-tag-bar" class="vault-tag-bar"></div>
+        </div>
+        <div id="vault-subtag-bar" class="vault-subtag-bar hidden" aria-label="Sub-label navigation"></div>
       </div>
+
+      <div id="vault-suggestions-strip" class="vault-suggestions-strip hidden" role="region" aria-label="Suggested new labels"></div>
 
       <div id="vault-grid-stage" class="vault-grid-stage">
         <div id="vault-float-sentinel" class="vault-float-sentinel" aria-hidden="true"></div>
@@ -438,11 +452,12 @@
             <div id="full-prompt-panel" class="full-prompt-panel hidden">
               <div class="prompt-warning-box" role="note">
                 <strong>Caution:</strong> Modifying the full system prompt overrides built-in filing rules.
-                Removing or renaming the 6 required JSON keys (<code>date</code>, <code>category</code>,
+                Removing or renaming the required JSON keys (<code>date</code>, <code>date_confidence</code>,
+                <code>date_source_page</code>, <code>category</code>, <code>label_confidence</code>,
                 <code>suggested_new_category</code>, <code>title</code>, <code>confidence</code>, <code>reason</code>)
                 conflicts with JSON schema enforcement and can cause extraction errors. Removing
                 <code>{categories}</code>, <code>{title_language_instruction}</code>, or <code>YYYY-MM-DD</code>
-                rules can degrade tag matching, title language, or date parsing.
+                rules can degrade label matching, title language, or date parsing.
               </div>
 
               <label class="field" style="margin-bottom:8px;">
@@ -477,12 +492,43 @@
           </div>
 
           <div class="field">
-            <span>Guided Categories</span>
+            <span>Guided Labels &amp; Sub-labels <small class="muted">(use <code>Parent/Sub-label</code> for hierarchy; click + to add a sub-label or ✎ to rename)</small></span>
             <div id="category-chips" class="chip-list"></div>
-            <div class="inline-input" style="max-width:360px;">
-              <input id="new-category-input" type="text" placeholder="Add category (e.g. Travel)" />
+            <div class="inline-input" style="max-width:420px;">
+              <input id="new-category-input" type="text" placeholder="Add label or sub-label (e.g. Housing/Internet)" />
               <button id="add-category-btn" class="btn btn-secondary btn-sm" type="button">Add</button>
             </div>
+          </div>
+
+          <div class="filing-rules-section">
+            <div class="filing-rules-head">
+              <div>
+                <span class="filing-rules-title">Filing Rules</span>
+                <span class="muted" style="font-size:12px;">Teach the organizer where specific senders or document types belong.</span>
+              </div>
+              <button id="add-rule-toggle-btn" class="btn btn-secondary btn-xs" type="button">+ Add Rule</button>
+            </div>
+            <div id="add-rule-form" class="add-rule-form hidden">
+              <div class="add-rule-grid">
+                <label class="field">
+                  <span>Match Keywords <small class="muted">(comma-separated, optional)</small></span>
+                  <input id="rule-keywords-input" type="text" placeholder="e.g. Telekom, Swisscom" />
+                </label>
+                <label class="field">
+                  <span>Or Document Description <small class="muted">(for AI)</small></span>
+                  <input id="rule-instruction-input" type="text" placeholder="e.g. Monthly internet &amp; mobile bills" />
+                </label>
+                <label class="field">
+                  <span>Target Label</span>
+                  <select id="rule-target-select"></select>
+                </label>
+              </div>
+              <div class="add-rule-actions">
+                <button id="rule-save-btn" class="btn btn-primary btn-xs" type="button">Save Rule</button>
+                <button id="rule-cancel-btn" class="btn btn-secondary btn-xs" type="button">Cancel</button>
+              </div>
+            </div>
+            <div id="filing-rules-list" class="filing-rules-list"></div>
           </div>
 
           <div class="masks-builder-grid">
@@ -564,12 +610,34 @@
             </label>
           </div>
         </div>
+
+        <div id="settings-license-card" class="settings-card settings-card-wide">
+          <div class="settings-card-head">
+            <span class="settings-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path>
+              </svg>
+            </span>
+            <div style="flex:1;">
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+                <h3>License &amp; Plan</h3>
+                <span id="settings-license-badge" class="tag">Free Tier</span>
+              </div>
+              <p class="muted">Manage your active vault's free-tier quota or Polar.sh license activation on this Mac.</p>
+            </div>
+          </div>
+          <div id="settings-license-body" class="settings-license-body">
+            <p class="muted" style="margin:0;">Checking license status…</p>
+          </div>
+        </div>
       </form>
 
       <div class="settings-footer-bar">
         <span class="muted">Document Vault · Local Apple Silicon AI</span>
         <div class="settings-footer-links">
           <button id="settings-welcome-guide-btn" class="btn-link" type="button">Welcome Guide</button>
+          <span class="muted" aria-hidden="true">·</span>
+          <a id="settings-support-link" class="btn-link" href="mailto:support@document-vault.app?subject=Document%20Vault%20Support">Support</a>
           <span class="muted" aria-hidden="true">·</span>
           <button id="open-licenses-btn" class="btn-link" type="button">Third-Party Licenses</button>
         </div>
@@ -770,6 +838,67 @@
     </div>
   </div>
 
+  <!-- License & Purchase Modal -->
+  <div id="license-modal" class="modal modal-license hidden" role="dialog" aria-modal="true" aria-labelledby="license-modal-title">
+    <div id="license-modal-backdrop" class="modal-backdrop"></div>
+    <div class="modal-card modal-card-license">
+      <div class="modal-header">
+        <div>
+          <h3 id="license-modal-title">Upgrade Document Vault</h3>
+          <p id="license-modal-subtitle" class="muted" style="margin:2px 0 0; font-size:12.5px;">One-time license · No subscription · Works offline after activation</p>
+        </div>
+        <button id="license-modal-close" class="btn btn-secondary btn-sm" type="button">Close</button>
+      </div>
+      <div id="license-modal-body" class="modal-body license-modal-body">
+        <div id="license-quota-banner" class="license-quota-banner">
+          <div class="license-quota-head">
+            <strong id="license-quota-title">0 of 30 free processed documents used</strong>
+            <span id="license-quota-pill" class="tag">Active Vault</span>
+          </div>
+          <div class="progress-bar-track">
+            <div id="license-quota-bar" class="progress-bar-fill" style="width:0%"></div>
+          </div>
+          <p class="muted" style="margin:0; font-size:12px;">
+            Browsing, searching, previews, and Finder access always stay free. Deleting a processed document immediately frees a slot.
+          </p>
+        </div>
+
+        <div id="license-active-panel" class="license-active-panel hidden"></div>
+
+        <div id="license-plans-section" class="license-plans-section">
+          <div class="license-plans-toolbar">
+            <span class="muted" style="font-size:12px;">Price currency display (Polar applies your local currency &amp; VAT at checkout):</span>
+            <div id="license-currency-switch" class="license-currency-switch" role="group" aria-label="Currency selection">
+              <button type="button" class="currency-opt-btn" data-currency="USD" aria-pressed="true">$ USD</button>
+              <button type="button" class="currency-opt-btn" data-currency="EUR" aria-pressed="false">€ EUR</button>
+              <button type="button" class="currency-opt-btn" data-currency="CHF" aria-pressed="false">CHF</button>
+            </div>
+          </div>
+          <div id="license-plans-grid" class="license-plans-grid"></div>
+        </div>
+
+        <div id="license-activate-box" class="license-activate-box">
+          <div class="license-activate-head">
+            <strong>Already have a license key?</strong>
+            <span class="muted" style="font-size:12px;">Paste your Polar.sh key to unlock unlimited AI processing on this Mac.</span>
+          </div>
+          <form id="license-activate-form" class="license-activate-form">
+            <input
+              id="license-key-input"
+              type="text"
+              placeholder="DVP-XXXX-XXXX-XXXX"
+              autocomplete="off"
+              spellcheck="false"
+              aria-label="License key"
+            />
+            <button id="license-activate-btn" class="btn btn-primary" type="submit">Activate Key</button>
+          </form>
+          <div id="license-activate-status" class="license-activate-status muted hidden" role="status"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal for Vault preview / edit -->
   <div id="doc-modal" class="modal hidden" role="dialog" aria-modal="true">
     <div class="modal-backdrop"></div>
@@ -784,6 +913,6 @@
 
   <div id="toast-container" class="toast-container"></div>
   <script src="./demo-server.js"></script>
-  <script src="./app.js?v=20261121j"></script>
+  <script type="module" src="./js/main.js?v=20261123c"></script>
 </body>
 </html>

@@ -15,6 +15,7 @@ import urllib.request
 import xml.etree.ElementTree as ET
 
 DEFAULT_RELEASES_REPO = "niosus/document-vault-releases"
+DEFAULT_CUSTOM_DOMAIN = "document-vault.app"
 SPARKLE_NS = "http://www.andymatuschak.org/xml-namespaces/sparkle"
 DC_NS = "http://purl.org/dc/elements/1.1/"
 ET.register_namespace("sparkle", SPARKLE_NS)
@@ -29,6 +30,35 @@ def github_pages_appcast_url(repo: str) -> str:
     if owner and name:
         return f"https://{owner}.github.io/{name}/appcast.xml"
     return f"https://github.com/{repo}/releases/latest/download/appcast.xml"
+
+
+def _read_cname_domain(cname_path: Path | None) -> str:
+    """Read a custom domain from a GitHub Pages CNAME file if present."""
+    if cname_path is None or not cname_path.is_file():
+        return ""
+    for line in cname_path.read_text(encoding="utf-8").splitlines():
+        candidate = line.strip()
+        if candidate and not candidate.startswith("#"):
+            return candidate
+    return ""
+
+
+def resolve_appcast_url(
+    repo: str,
+    *,
+    site_url: str | None = None,
+    cname_path: Path | None = None,
+) -> str:
+    """Return the canonical public URL hosting appcast.xml for the releases site."""
+    explicit = str(site_url or "").strip().rstrip("/")
+    if explicit:
+        return f"{explicit}/appcast.xml"
+    cname_domain = _read_cname_domain(cname_path)
+    if cname_domain:
+        return f"https://{cname_domain}/appcast.xml"
+    if str(repo or "").strip() == DEFAULT_RELEASES_REPO and DEFAULT_CUSTOM_DOMAIN:
+        return f"https://{DEFAULT_CUSTOM_DOMAIN}/appcast.xml"
+    return github_pages_appcast_url(repo)
 
 
 def parse_version_tuple(tag_or_version: str) -> tuple[int, int, int, int, str]:
@@ -112,6 +142,8 @@ def build_latest_payload(
     repo: str = DEFAULT_RELEASES_REPO,
     history_limit: int = 6,
     generated_at: str | None = None,
+    site_url: str | None = None,
+    cname_path: Path | None = None,
 ) -> dict[str, Any]:
     """Compute the latest stable, latest prerelease, and recent history from GitHub releases."""
     normalized: list[dict[str, Any]] = []
@@ -134,7 +166,7 @@ def build_latest_payload(
         "generated_at": generated_at or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "repo": repo,
         "releases_url": f"https://github.com/{repo}/releases",
-        "appcast_url": github_pages_appcast_url(repo),
+        "appcast_url": resolve_appcast_url(repo, site_url=site_url, cname_path=cname_path),
         "latest": latest_stable,
         "prerelease": latest_prerelease,
         "history": normalized[: max(1, history_limit)],
@@ -289,6 +321,11 @@ def main() -> int:
         default=6,
         help="Number of recent releases to include in history (default: 6)",
     )
+    parser.add_argument(
+        "--site-url",
+        default="",
+        help="Optional canonical website base URL (e.g. https://document-vault.app); auto-detects CNAME if omitted",
+    )
     args = parser.parse_args()
 
     token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN") or ""
@@ -300,12 +337,18 @@ def main() -> int:
     else:
         releases = fetch_github_releases(args.repo, token=token)
 
+    out_path = args.output.resolve()
+    cname_candidate = out_path.parent / "CNAME"
+    if not cname_candidate.is_file():
+        cname_candidate = Path.cwd() / "CNAME"
+
     payload = build_latest_payload(
         releases,
         repo=args.repo,
         history_limit=args.history_limit,
+        site_url=args.site_url or None,
+        cname_path=cname_candidate if cname_candidate.is_file() else None,
     )
-    out_path = args.output.resolve()
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     print(f"Generated {out_path} (latest={bool(payload['latest'])}, prerelease={bool(payload['prerelease'])})")

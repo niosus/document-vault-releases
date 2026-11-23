@@ -2,11 +2,25 @@
   "use strict";
 
   const THEME_STORAGE_KEY = "dv_site_theme";
+  const CURRENCY_STORAGE_KEY = "dv_site_currency";
+  const VALID_CURRENCIES = new Set(["USD", "EUR", "CHF"]);
+  const EUR_REGION_CODES = new Set([
+    "AT", "BE", "CY", "DE", "EE", "ES", "FI", "FR", "GR", "HR",
+    "IE", "IT", "LT", "LU", "LV", "MT", "NL", "PT", "SI", "SK",
+  ]);
+  const EUR_TZ_SET = new Set([
+    "Europe/Berlin", "Europe/Paris", "Europe/Rome", "Europe/Madrid",
+    "Europe/Amsterdam", "Europe/Vienna", "Europe/Brussels", "Europe/Dublin",
+    "Europe/Lisbon", "Europe/Helsinki", "Europe/Athens", "Europe/Luxembourg",
+    "Europe/Bratislava", "Europe/Ljubljana", "Europe/Tallinn", "Europe/Riga",
+    "Europe/Vilnius", "Europe/Valletta", "Europe/Nicosia", "Europe/Zagreb",
+  ]);
   const DEFAULT_RELEASES_URL = "https://github.com/niosus/document-vault-releases/releases";
-  const DEFAULT_APPCAST_URL = "https://niosus.github.io/document-vault-releases/appcast.xml";
+  const DEFAULT_APPCAST_URL = "https://document-vault.app/appcast.xml";
 
   let currentPayload = null;
   let activeReleaseTab = "latest";
+  let currentCurrency = "USD";
 
   function $(id) {
     return document.getElementById(id);
@@ -115,6 +129,13 @@
       btn.classList.toggle("is-active", active);
       btn.setAttribute("aria-pressed", active ? "true" : "false");
     }
+
+    ["btn-buy-starter", "btn-buy-personal"].forEach((id) => {
+      const btn = $(id);
+      if (btn && btn.getAttribute("data-polar-checkout") !== null) {
+        btn.setAttribute("data-polar-checkout-theme", resolved);
+      }
+    });
   }
 
   function initThemeControls() {
@@ -569,6 +590,135 @@
     }
   }
 
+  /* ---------- Pricing & Currency Switcher ---------- */
+  function detectPreferredCurrency() {
+    try {
+      const saved = localStorage.getItem(CURRENCY_STORAGE_KEY);
+      if (VALID_CURRENCIES.has(saved)) return saved;
+    } catch {
+      // ignore storage errors
+    }
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+      if (tz === "Europe/Zurich" || tz === "Europe/Busingen" || tz === "Europe/Vaduz") return "CHF";
+      if (EUR_TZ_SET.has(tz)) return "EUR";
+    } catch {
+      // ignore Intl errors
+    }
+    try {
+      const nav = typeof navigator !== "undefined" ? navigator : null;
+      const langs =
+        nav && Array.isArray(nav.languages) && nav.languages.length
+          ? nav.languages
+          : nav && nav.language
+            ? [nav.language]
+            : [];
+      for (const lang of langs) {
+        const parts = String(lang || "").split(/[-_]/);
+        const region = (parts[parts.length - 1] || "").toUpperCase();
+        if (region === "CH" || region === "LI") return "CHF";
+        if (EUR_REGION_CODES.has(region)) return "EUR";
+      }
+    } catch {
+      // ignore navigator errors
+    }
+    return "USD";
+  }
+
+  function formatCurrencyAmount(currency, amount) {
+    const n = Number(amount);
+    if (!Number.isFinite(n)) return String(amount || "");
+    if (currency === "CHF") return `CHF ${n}`;
+    if (currency === "EUR") return `€${n}`;
+    return `$${n}`;
+  }
+
+  function applyCurrency(currency, persist = true) {
+    const next = VALID_CURRENCIES.has(currency) ? currency : "USD";
+    currentCurrency = next;
+
+    if (persist) {
+      try {
+        localStorage.setItem(CURRENCY_STORAGE_KEY, next);
+      } catch {
+        // ignore storage errors
+      }
+    }
+
+    const priceSpecs = [
+      ["price-free", 0],
+      ["price-starter", 19],
+      ["price-personal", 29],
+    ];
+    for (const [id, fallbackAmount] of priceSpecs) {
+      const el = $(id);
+      if (!el) continue;
+      const amt = el.dataset && el.dataset.amount !== undefined ? el.dataset.amount : fallbackAmount;
+      el.textContent = formatCurrencyAmount(next, amt);
+    }
+
+    const buttons = document.querySelectorAll("#pricing-currency-switch .currency-opt-btn");
+    if (buttons && typeof buttons.forEach === "function") {
+      buttons.forEach((btn) => {
+        const active = btn.dataset && btn.dataset.currency === next;
+        btn.classList.toggle("is-active", Boolean(active));
+        btn.setAttribute("aria-pressed", active ? "true" : "false");
+      });
+    }
+  }
+
+  function configureCheckoutLinks() {
+    const resolvedTheme = document.documentElement.dataset.theme || "light";
+    const metaMap = [
+      ["btn-buy-starter", "polar-checkout-starter", "Starter (1 Mac)"],
+      ["btn-buy-personal", "polar-checkout-personal", "Personal (3 Macs)"],
+    ];
+    const noteEl = $("pricing-checkout-note");
+
+    for (const [btnId, metaName, label] of metaMap) {
+      const btn = $(btnId);
+      if (!btn) continue;
+      const meta = document.querySelector(`meta[name="${metaName}"]`);
+      const url = meta ? String(meta.getAttribute("content") || "").trim() : "";
+      if (url && /^https?:\/\//i.test(url)) {
+        btn.setAttribute("href", url);
+        btn.setAttribute("data-polar-checkout", "");
+        btn.setAttribute("data-polar-checkout-theme", resolvedTheme);
+        btn.setAttribute("target", "_blank");
+        btn.setAttribute("rel", "noopener");
+      } else {
+        btn.addEventListener("click", (e) => {
+          e.preventDefault();
+          if (noteEl) {
+            noteEl.textContent = `${label} checkout URL is not configured yet. Set the "${metaName}" meta tag in site/index.html to your Polar.sh checkout link.`;
+            noteEl.classList.remove("hidden");
+          }
+        });
+      }
+    }
+
+    const contactBtn = $("btn-contact-business");
+    const emailMeta = document.querySelector('meta[name="business-contact-email"]');
+    const contactEmail = emailMeta ? String(emailMeta.getAttribute("content") || "").trim() : "";
+    if (contactBtn && contactEmail) {
+      contactBtn.setAttribute(
+        "href",
+        `mailto:${contactEmail}?subject=${encodeURIComponent("Document Vault Business License")}`
+      );
+    }
+  }
+
+  function initPricing() {
+    applyCurrency(detectPreferredCurrency(), false);
+    const buttons = document.querySelectorAll("#pricing-currency-switch .currency-opt-btn");
+    if (buttons && typeof buttons.forEach === "function") {
+      buttons.forEach((btn) => {
+        btn.addEventListener("click", () => applyCurrency(btn.dataset.currency || "USD"));
+      });
+    }
+    configureCheckoutLinks();
+  }
+
   function initReleaseTabs() {
     document.querySelectorAll(".release-tab").forEach((btn) => {
       btn.addEventListener("click", () => renderReleaseTab(btn.dataset.releaseTab || "latest"));
@@ -577,6 +727,7 @@
 
   function boot() {
     initThemeControls();
+    initPricing();
     initShowcase();
     initGatekeeperToggle();
     initReleaseTabs();
@@ -585,9 +736,12 @@
   }
 
   window.__dvSite = {
+    applyCurrency,
     applyReleasePayload,
     applyTheme,
+    detectPreferredCurrency,
     formatBytes,
+    formatCurrencyAmount,
     renderReleaseTab,
   };
 

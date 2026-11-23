@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const APP_VERSION = "0.2.0";
+  const APP_VERSION = "0.3.0";
   const DEFAULT_CATEGORIES = [
     "Finance",
     "Taxes",
@@ -9,6 +9,7 @@
     "Insurance",
     "Legal",
     "Housing",
+    "Housing/Utilities",
     "Identity",
     "Receipts",
     "Travel",
@@ -151,6 +152,7 @@
       watcher_enabled: true,
       watcher_debounce_seconds: 2.0,
       categories: [...DEFAULT_CATEGORIES],
+      filing_rules: [],
       tree_template: "{year}/{category}",
       filename_mask: "{date} - {title}",
       date_format: "YYYY-MM-DD",
@@ -261,6 +263,9 @@
         labels: ["Insurance", "Housing"],
         title: "Home Policy Renewal",
         confidence: 0.96,
+        reliability_status: "check_date",
+        reliability_reasons: ["Future renewal date — verify"],
+        suggested_new_label: "Housing/Insurance",
         reason: "Annual homeowner insurance renewal schedule.",
         created_at: isoMinutesAgo(310),
         updated_at: isoMinutesAgo(310),
@@ -287,13 +292,16 @@
         sha256: "a1b2c3d4e5f60004",
         original_filename: "utility_annual_2025.pdf",
         source_mode: "vault_scan",
-        source_path: "~/Documents/DocumentVault/2025/Housing/2025-12-18 - Electric Utility Annual Summary.pdf",
+        source_path: "~/Documents/DocumentVault/2025/Housing/Utilities/2025-12-18 - Electric Utility Annual Summary.pdf",
         doc_date: "2025-12-18",
         doc_year: "2025",
-        category: "Housing",
-        labels: ["Housing"],
+        category: "Housing/Utilities",
+        labels: ["Housing", "Utilities"],
         title: "Electric Utility Annual Summary",
         confidence: 0.95,
+        reliability_status: "verified",
+        reliability_reasons: [],
+        suggested_new_label: "Housing/Electricity",
         reason: "Year-end electricity consumption and billing summary.",
         created_at: isoMinutesAgo(1440),
         updated_at: isoMinutesAgo(1440),
@@ -459,29 +467,40 @@
       nextId: 300,
       modelLoaded: true,
       downloadState: { status: "idle", model_id: "", percent: 0, message: "" },
+      license: null,
     };
   }
 
   let db = createInitialState();
 
+  function normalizeLabelPath(raw, fallback = "") {
+    const parts = String(raw || "")
+      .replace(/\\/g, "/")
+      .split("/")
+      .map((s) => s.replace(/[<>:"|?*\x00-\x1f]/g, " ").trim())
+      .filter((s) => s && !/^(19\d{2}|20\d{2})$/.test(s) && s.toLowerCase() !== "unknown year");
+    return parts.length ? parts.join("/") : fallback;
+  }
+
   function formatPath(settings, dateStr, category, title, ext) {
     const cleanDate = String(dateStr || "").trim() || "Undated";
     const yearMatch = /^((?:19|20)\d{2})/.exec(cleanDate);
     const year = yearMatch ? yearMatch[1] : "Unknown Year";
-    const safeCat = String(category || "Other").replace(/[\\/]/g, "-").trim() || "Other";
+    const cleanCatPath = normalizeLabelPath(category, "Other");
+    const flatCat = cleanCatPath.replace(/\//g, " ");
     const safeTitle = String(title || "Untitled").replace(/[\\/:*?"<>|]/g, " ").trim() || "Untitled";
     const cleanExt = ext.startsWith(".") ? ext : `.${ext || "pdf"}`;
 
     let folder = String(settings.tree_template || "{year}/{category}")
       .replaceAll("{year}", year)
-      .replaceAll("{category}", safeCat)
+      .replaceAll("{category}", cleanCatPath)
       .replace(/\/+/g, "/")
       .replace(/^\/|\/$/g, "");
 
     let stem = String(settings.filename_mask || "{date} - {title}")
       .replaceAll("{date}", cleanDate)
       .replaceAll("{year}", year)
-      .replaceAll("{category}", safeCat)
+      .replaceAll("{category}", flatCat)
       .replaceAll("{title}", safeTitle)
       .trim();
 
@@ -491,42 +510,123 @@
   function syncDocPaths(doc) {
     const extMatch = /\.([A-Za-z0-9]+)$/.exec(doc.original_filename || "");
     const ext = extMatch ? `.${extMatch[1].toLowerCase()}` : ".pdf";
+    doc.category = normalizeLabelPath(doc.category, "Other");
     const rel = formatPath(db.settings, doc.doc_date, doc.category, doc.title, ext);
     doc.vault_rel_path = rel;
     doc.vault_abs_path = `${db.settings.vault_dir}/${rel}`;
     const yearMatch = /^((?:19|20)\d{2})/.exec(doc.doc_date || "");
     doc.doc_year = yearMatch ? yearMatch[1] : "Unknown Year";
-    if (!Array.isArray(doc.labels) || !doc.labels.length) {
-      doc.labels = [doc.category || "Other"];
-    }
+    doc.labels = doc.category.split("/").filter(Boolean);
+    if (!doc.labels.length) doc.labels = ["Other"];
+    if (!doc.reliability_status) doc.reliability_status = "verified";
+    if (!Array.isArray(doc.reliability_reasons)) doc.reliability_reasons = [];
+    if (typeof doc.suggested_new_label !== "string") doc.suggested_new_label = "";
+    if (typeof doc.matched_rule_id !== "string") doc.matched_rule_id = "";
   }
 
   db.docs.forEach(syncDocPaths);
 
   function computeFacets() {
     const counts = {};
+    const canonByLower = {};
     const yearsSet = new Set();
+    let needsCheckCount = 0;
+    const suggestedSeen = new Set();
+
     for (const doc of db.docs) {
       yearsSet.add(doc.doc_year || "Unknown Year");
-      const labels = Array.isArray(doc.labels) && doc.labels.length ? doc.labels : [doc.category || "Other"];
-      const seen = new Set();
-      for (const lbl of labels) {
-        if (!seen.has(lbl)) {
-          seen.add(lbl);
-          counts[lbl] = (counts[lbl] || 0) + 1;
+      const relSt = String(doc.reliability_status || "verified").toLowerCase();
+      if (relSt === "check_date" || relSt === "low") needsCheckCount += 1;
+      const sug = String(doc.suggested_new_label || "").trim();
+      if (sug) suggestedSeen.add(sug.toLowerCase());
+
+      const parts = normalizeLabelPath(doc.category, "Other").split("/").filter(Boolean);
+      const seenForDoc = new Set();
+      let acc = [];
+      for (const seg of parts) {
+        acc.push(seg);
+        const rawPrefix = acc.join("/");
+        const key = rawPrefix.toLowerCase();
+        const canon = canonByLower[key] || (canonByLower[key] = rawPrefix);
+        acc = canon.split("/");
+        if (!seenForDoc.has(key)) {
+          seenForDoc.add(key);
+          counts[canon] = (counts[canon] || 0) + 1;
         }
       }
     }
-    const categories = Object.keys(counts).sort();
+
+    const categories = Object.keys(counts).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
     const sortedCounts = {};
     for (const c of categories) sortedCounts[c] = counts[c];
+
+    const nodesByLower = {};
+    for (const c of categories) {
+      const parts = c.split("/");
+      for (let i = 0; i < parts.length; i += 1) {
+        const subPath = parts.slice(0, i + 1).join("/");
+        const key = subPath.toLowerCase();
+        if (!nodesByLower[key]) {
+          nodesByLower[key] = {
+            path: subPath,
+            name: parts[i],
+            count: sortedCounts[subPath] ?? 0,
+            children: [],
+          };
+        }
+      }
+    }
+    const labelTree = [];
+    for (const key of Object.keys(nodesByLower).sort()) {
+      const node = nodesByLower[key];
+      const parts = node.path.split("/");
+      if (parts.length <= 1) {
+        labelTree.push(node);
+      } else {
+        const parentKey = parts.slice(0, -1).join("/").toLowerCase();
+        if (nodesByLower[parentKey]) {
+          nodesByLower[parentKey].children.push(node);
+        } else {
+          labelTree.push(node);
+        }
+      }
+    }
+
     const years = Array.from(yearsSet).sort((a, b) => b.localeCompare(a));
     return {
       categories,
       category_counts: sortedCounts,
+      label_tree: labelTree,
       total_count: db.docs.length,
       years,
+      needs_check_count: needsCheckCount,
+      suggested_bundles_count: suggestedSeen.size,
     };
+  }
+
+  function learnDemoRule(payload, fallbackTarget) {
+    if (!payload || typeof payload !== "object") return null;
+    const kws = Array.isArray(payload.match_keywords)
+      ? payload.match_keywords.map((k) => String(k || "").trim()).filter(Boolean)
+      : [];
+    const instr = String(payload.instruction || "").trim();
+    const target = normalizeLabelPath(payload.target_label || fallbackTarget, "Other");
+    if (!kws.length && !instr) return null;
+    if (!db.settings.categories.some((c) => c.toLowerCase() === target.toLowerCase())) {
+      db.settings.categories.push(target);
+    }
+    const rule = {
+      id: payload.id || `rule_${Date.now().toString(36)}`,
+      name: payload.name || kws.slice(0, 2).join(", ") || instr.slice(0, 48),
+      match_keywords: kws,
+      instruction: instr,
+      target_label: target,
+      enabled: payload.enabled !== false,
+    };
+    const existingIdx = db.settings.filing_rules.findIndex((r) => r.id === rule.id);
+    if (existingIdx >= 0) db.settings.filing_rules[existingIdx] = rule;
+    else db.settings.filing_rules.push(rule);
+    return rule;
   }
 
   function buildWatcherSnapshot() {
@@ -542,6 +642,8 @@
       active_thinking: "",
       last_scan_at: new Date().toISOString(),
       last_error: null,
+      license_blocked: false,
+      license_block_message: "",
       dump_dir: db.settings.dump_dir,
       vault_dir: db.settings.vault_dir,
       pending_dump_files: 0,
@@ -549,6 +651,115 @@
       activity: [...db.activity],
       pending_reviews: db.reviewItems.length,
     };
+  }
+
+  function countDemoProcessedDocs() {
+    return db.docs.filter((d) => String(d.source_mode || "").toLowerCase() !== "vault_scan").length;
+  }
+
+  function buildLicenseStatus() {
+    const freeLimit = 30;
+    const processed = countDemoProcessedDocs();
+    const lic = db.license;
+    const licensed = Boolean(lic && lic.status === "granted");
+    return {
+      licensed,
+      state: licensed ? "licensed" : processed >= freeLimit ? "limit_reached" : "free",
+      provider: "polar",
+      polar_configured: true,
+      free_limit: freeLimit,
+      processed_count: processed,
+      remaining_free: licensed ? null : Math.max(0, freeLimit - processed),
+      can_process: Boolean(licensed || processed < freeLimit),
+      tier: licensed ? lic.tier : "",
+      tier_label: licensed ? lic.tier_label : "Free Tier",
+      display_key: licensed ? lic.display_key : "",
+      activation_id: licensed ? lic.activation_id : "",
+      limit_activations: licensed ? lic.limit_activations : null,
+      label: licensed ? lic.label : "",
+      activated_at: licensed ? lic.activated_at : null,
+      last_validated_at: licensed ? lic.last_validated_at : null,
+      expires_at: null,
+      needs_revalidation: false,
+      portal_url: "",
+      business_contact_email: "hello@document-vault.app",
+      plans: [
+        {
+          id: "starter",
+          name: "Starter",
+          subtitle: "Single Mac license",
+          seats: 1,
+          seats_label: "1 Mac",
+          prices: { USD: 19, EUR: 19, CHF: 19 },
+          billing: "One-time payment",
+          checkout_url: "",
+          badge: "",
+          contact_only: false,
+          contact_email: "",
+          features: [
+            "Unlimited processed documents",
+            "1 Mac activation",
+            "Works 100% offline after activation",
+            "All v1.x updates included",
+          ],
+        },
+        {
+          id: "personal",
+          name: "Personal",
+          subtitle: "Desktop + laptop bundle",
+          seats: 3,
+          seats_label: "3 Macs",
+          prices: { USD: 29, EUR: 29, CHF: 29 },
+          billing: "One-time payment",
+          checkout_url: "",
+          badge: "Most Popular",
+          contact_only: false,
+          contact_email: "",
+          features: [
+            "Unlimited processed documents",
+            "Up to 3 Mac activations",
+            "Deactivate & transfer Macs anytime",
+            "All v1.x updates included",
+          ],
+        },
+        {
+          id: "business",
+          name: "Business",
+          subtitle: "Teams & commercial use",
+          seats: null,
+          seats_label: "5+ Macs",
+          prices: null,
+          billing: "Custom quote",
+          checkout_url: "",
+          badge: "",
+          contact_only: true,
+          contact_email: "hello@document-vault.app",
+          features: [
+            "5+ seats & shared team vaults",
+            "Custom VAT invoice & procurement",
+            "Priority onboarding support",
+          ],
+        },
+      ],
+    };
+  }
+
+  function demoQuotaErrorResponse() {
+    const processed = countDemoProcessedDocs();
+    if (!db.license && processed >= 30) {
+      return jsonResponse(
+        {
+          detail: {
+            code: "license_required",
+            message: `Free limit reached (${processed} of 30 processed documents in this vault).`,
+            processed_count: processed,
+            free_limit: 30,
+          },
+        },
+        402
+      );
+    }
+    return null;
   }
 
   function buildHealth() {
@@ -581,6 +792,7 @@
       },
       pending_reviews: db.reviewItems.length,
       watcher: buildWatcherSnapshot(),
+      license: buildLicenseStatus(),
     };
   }
 
@@ -854,8 +1066,14 @@
     if (path === "/api/intake/preview-path" && method === "POST") {
       const body = await parseBody(init);
       const previewSettings = { ...db.settings, ...body };
-      const rel = formatPath(previewSettings, "2026-04-12", "Taxes", "Municipal Tax Assessment", ".pdf");
-      return jsonResponse({ preview_rel_path: rel });
+      const rel = formatPath(
+        previewSettings,
+        body.date || "2026-04-12",
+        body.category || "Taxes",
+        body.title || "Municipal Tax Assessment",
+        body.filename || ".pdf"
+      );
+      return jsonResponse({ rel_path: rel, preview_rel_path: rel });
     }
 
     if (path === "/api/watcher/status" && method === "GET") {
@@ -868,6 +1086,8 @@
     }
 
     if ((path === "/api/watcher/scan" || path === "/api/onboarding/sample") && method === "POST") {
+      const blocked = demoQuotaErrorResponse();
+      if (blocked) return blocked;
       const sampleName = path.endsWith("/sample") ? "Sample_Dental_Receipt.pdf" : "Scanner_Inbox_009.pdf";
       const doc = addNewDemoDocument({
         filename: sampleName,
@@ -905,6 +1125,8 @@
     }
 
     if (path === "/api/watcher/upload" && method === "POST") {
+      const blocked = demoQuotaErrorResponse();
+      if (blocked) return blocked;
       const uploadedNames = [];
       if (init.body && typeof init.body.getAll === "function") {
         for (const f of init.body.getAll("files")) {
@@ -924,8 +1146,10 @@
 
     if (path === "/api/documents" && method === "GET") {
       const q = (parsedUrl.searchParams.get("q") || "").trim().toLowerCase();
-      const cat = (parsedUrl.searchParams.get("category") || "").trim();
+      const cat = normalizeLabelPath(parsedUrl.searchParams.get("category") || "");
       const year = (parsedUrl.searchParams.get("year") || "").trim();
+      const sugLabel = (parsedUrl.searchParams.get("suggested_label") || "").trim().toLowerCase();
+      const relFilter = (parsedUrl.searchParams.get("reliability") || "").trim().toLowerCase();
       const sort = parsedUrl.searchParams.get("sort") || "recent";
       const limit = Number(parsedUrl.searchParams.get("limit") || 48);
       const offset = Number(parsedUrl.searchParams.get("offset") || 0);
@@ -933,12 +1157,24 @@
 
       let filtered = db.docs.filter((d) => {
         if (cat) {
-          const labels = Array.isArray(d.labels) && d.labels.length ? d.labels : [d.category];
-          if (!labels.includes(cat) && d.category !== cat) return false;
+          const catLow = cat.toLowerCase();
+          const dCatLow = String(d.category || "").toLowerCase();
+          const labelsLow = (Array.isArray(d.labels) ? d.labels : []).map((l) => String(l).toLowerCase());
+          const matchesPrefix = dCatLow === catLow || dCatLow.startsWith(`${catLow}/`);
+          if (!matchesPrefix && !labelsLow.includes(catLow)) return false;
         }
         if (year && d.doc_year !== year) return false;
+        if (sugLabel && String(d.suggested_new_label || "").trim().toLowerCase() !== sugLabel) return false;
+        if (relFilter) {
+          const dRel = String(d.reliability_status || "verified").toLowerCase();
+          if (relFilter === "needs_check" || relFilter === "check" || relFilter === "attention") {
+            if (dRel !== "check_date" && dRel !== "low") return false;
+          } else if (dRel !== relFilter) {
+            return false;
+          }
+        }
         if (q) {
-          const hay = `${d.title} ${d.category} ${d.doc_date} ${d.vault_rel_path} ${d.extracted_text}`.toLowerCase();
+          const hay = `${d.title} ${d.category} ${d.doc_date} ${d.vault_rel_path} ${d.extracted_text} ${d.suggested_new_label || ""}`.toLowerCase();
           if (!hay.includes(q)) return false;
         }
         return true;
@@ -1009,16 +1245,46 @@
 
     const reclassifyMatch = /^\/api\/documents\/(\d+)\/reclassify$/.exec(path);
     if (reclassifyMatch && method === "POST") {
+      const blocked = demoQuotaErrorResponse();
+      if (blocked) return blocked;
       const doc = db.docs.find((d) => d.id === Number(reclassifyMatch[1]));
       if (!doc) return jsonResponse({ detail: "Document not found" }, 404);
-      return jsonResponse({
+      const sugObj = {
         date: doc.doc_date,
         category: doc.category,
-        suggested_new_category: null,
+        suggested_new_category: doc.suggested_new_label || null,
         title: doc.title,
         confidence: doc.confidence,
+        reliability: {
+          status: doc.reliability_status || "verified",
+          reasons: doc.reliability_reasons || [],
+          score: doc.confidence || 0.95,
+        },
         reason: "Demo AI re-verified existing metadata against local rules.",
-      });
+        preview_rel_path: doc.vault_rel_path,
+      };
+      return jsonResponse({ document: doc, suggestion: sugObj, applied: false, changed: false });
+    }
+
+    const revertMatch = /^\/api\/documents\/(\d+)\/revert$/.exec(path);
+    if (revertMatch && method === "POST") {
+      const doc = db.docs.find((d) => d.id === Number(revertMatch[1]));
+      if (!doc) return jsonResponse({ detail: "Document not found" }, 404);
+      if (!doc.previous_category) {
+        return jsonResponse({ detail: "No previous label recorded for this document." }, 400);
+      }
+      const prevCat = doc.category;
+      const prevDate = doc.doc_date;
+      const prevTitle = doc.title;
+      doc.category = doc.previous_category;
+      if (doc.previous_doc_date !== undefined) doc.doc_date = doc.previous_doc_date;
+      if (doc.previous_title !== undefined) doc.title = doc.previous_title;
+      doc.previous_category = prevCat;
+      doc.previous_doc_date = prevDate;
+      doc.previous_title = prevTitle;
+      doc.updated_at = new Date().toISOString();
+      syncDocPaths(doc);
+      return jsonResponse(doc);
     }
 
     const docIdMatch = /^\/api\/documents\/(\d+)$/.exec(path);
@@ -1029,18 +1295,29 @@
       if (method === "PATCH") {
         const body = await parseBody(init);
         const doc = db.docs[idx];
-        if (body.date !== undefined) doc.doc_date = String(body.date || "");
-        if (body.category !== undefined) {
-          doc.category = String(body.category || "Other");
-          doc.labels = [doc.category];
+        const nextCat = body.category !== undefined ? normalizeLabelPath(body.category, "Other") : doc.category;
+        const catChanged = nextCat.toLowerCase() !== String(doc.category || "").toLowerCase();
+        if (catChanged) {
+          doc.previous_category = doc.category;
+          doc.previous_doc_date = doc.doc_date;
+          doc.previous_title = doc.title;
         }
+        if (body.date !== undefined) doc.doc_date = String(body.date || "");
+        doc.category = nextCat;
         if (body.title !== undefined) doc.title = String(body.title || doc.title);
-        if (body.add_category && doc.category && !db.settings.categories.includes(doc.category)) {
+        if (body.clear_suggested_label || catChanged) doc.suggested_new_label = "";
+        doc.reliability_status = doc.doc_date ? "verified" : "check_date";
+        doc.reliability_reasons = doc.doc_date ? ["Verified by user"] : ["No date set — verify"];
+        doc.confidence = doc.doc_date ? 1.0 : 0.5;
+        if (body.add_category && doc.category && !db.settings.categories.some((c) => c.toLowerCase() === doc.category.toLowerCase())) {
           db.settings.categories.push(doc.category);
+        }
+        if (body.learn_rule) {
+          learnDemoRule(body.learn_rule, doc.category);
         }
         doc.updated_at = new Date().toISOString();
         syncDocPaths(doc);
-        return jsonResponse({ document: doc });
+        return jsonResponse(doc);
       }
       if (method === "DELETE") {
         db.docs.splice(idx, 1);
@@ -1050,26 +1327,209 @@
 
     if (path === "/api/documents/batch/delete" && method === "POST") {
       const body = await parseBody(init);
-      const ids = new Set((body.document_ids || []).map(Number));
+      const itemIds = Array.isArray(body.items) ? body.items.map((i) => Number(i.id)) : [];
+      const docIds = Array.isArray(body.document_ids) ? body.document_ids.map(Number) : [];
+      const ids = new Set(itemIds.length ? itemIds : docIds);
       db.docs = db.docs.filter((d) => !ids.has(d.id));
       return jsonResponse({ deleted_count: ids.size });
     }
 
     if (path === "/api/documents/batch/update" && method === "POST") {
       const body = await parseBody(init);
-      const ids = new Set((body.document_ids || []).map(Number));
+      const rawIds = Array.isArray(body.doc_ids) ? body.doc_ids : (body.document_ids || []);
+      const ids = new Set(rawIds.map(Number));
+      const targetCat = body.category ? normalizeLabelPath(body.category, "Other") : "";
+      if (targetCat && body.add_category && !db.settings.categories.some((c) => c.toLowerCase() === targetCat.toLowerCase())) {
+        db.settings.categories.push(targetCat);
+      }
       let updated = 0;
       for (const d of db.docs) {
         if (!ids.has(d.id)) continue;
-        if (body.category) {
-          d.category = body.category;
-          d.labels = [body.category];
+        if (targetCat) {
+          d.category = targetCat;
+          d.suggested_new_label = "";
         }
         if (body.date !== undefined && body.date !== null) d.doc_date = body.date;
+        d.updated_at = new Date().toISOString();
         syncDocPaths(d);
         updated += 1;
       }
-      return jsonResponse({ updated_count: updated });
+      const learned = body.learn_rule ? learnDemoRule(body.learn_rule, targetCat || "Other") : null;
+      return jsonResponse({ updated_count: updated, errors: [], ...(learned ? { learned_rule: learned } : {}) });
+    }
+
+    if (path === "/api/labels/suggestions" && method === "GET") {
+      const map = new Map();
+      for (const d of db.docs) {
+        const sug = String(d.suggested_new_label || "").trim();
+        if (!sug) continue;
+        const key = sug.toLowerCase();
+        if (!map.has(key)) {
+          map.set(key, { suggested_label: sug, count: 0, doc_ids: [], sample_titles: [], current_categories: [] });
+        }
+        const b = map.get(key);
+        b.count += 1;
+        b.doc_ids.push(d.id);
+        if (b.sample_titles.length < 4) b.sample_titles.push(d.title);
+        if (!b.current_categories.includes(d.category)) b.current_categories.push(d.category);
+      }
+      const bundles = Array.from(map.values()).sort((a, b) => b.count - a.count);
+      return jsonResponse({ bundles, total_docs: bundles.reduce((s, b) => s + b.count, 0) });
+    }
+
+    if (path === "/api/labels/suggestions/detail" && method === "GET") {
+      const sug = normalizeLabelPath(parsedUrl.searchParams.get("suggested_label") || "");
+      const docs = db.docs.filter((d) => String(d.suggested_new_label || "").toLowerCase() === sug.toLowerCase());
+      return jsonResponse({ suggested_label: sug, count: docs.length, documents: docs });
+    }
+
+    if (path === "/api/labels/suggestions/apply" && method === "POST") {
+      const body = await parseBody(init);
+      const sug = normalizeLabelPath(body.suggested_label || "");
+      const target = normalizeLabelPath(body.target_label || sug, "Other");
+      const bundleDocs = db.docs.filter((d) => String(d.suggested_new_label || "").toLowerCase() === sug.toLowerCase());
+      const selectedSet = Array.isArray(body.doc_ids) ? new Set(body.doc_ids.map(Number)) : new Set(bundleDocs.map((d) => d.id));
+      const overrides = body.manual_overrides && typeof body.manual_overrides === "object" ? body.manual_overrides : {};
+      if (!db.settings.categories.some((c) => c.toLowerCase() === target.toLowerCase())) {
+        db.settings.categories.push(target);
+      }
+      let movedCount = 0;
+      let dismissedCount = 0;
+      for (const d of bundleDocs) {
+        const ov = overrides[String(d.id)] ?? overrides[d.id];
+        if (!selectedSet.has(d.id) && !ov) {
+          if (body.dismiss_excluded) {
+            d.suggested_new_label = "";
+            dismissedCount += 1;
+          }
+          continue;
+        }
+        const destCat = normalizeLabelPath(ov || target, target);
+        if (!db.settings.categories.some((c) => c.toLowerCase() === destCat.toLowerCase())) {
+          db.settings.categories.push(destCat);
+        }
+        d.previous_category = d.category;
+        d.previous_doc_date = d.doc_date;
+        d.previous_title = d.title;
+        d.category = destCat;
+        d.suggested_new_label = "";
+        syncDocPaths(d);
+        movedCount += 1;
+      }
+      const learned = body.learn_rule ? learnDemoRule(body.learn_rule, target) : null;
+      return jsonResponse({
+        suggested_label: sug,
+        target_label: target,
+        moved_count: movedCount,
+        dismissed_count: dismissedCount,
+        errors: [],
+        ...(learned ? { learned_rule: learned } : {}),
+      });
+    }
+
+    if (path === "/api/labels/suggestions/dismiss" && method === "POST") {
+      const body = await parseBody(init);
+      const sug = normalizeLabelPath(body.suggested_label || "").toLowerCase();
+      const idSet = Array.isArray(body.doc_ids) ? new Set(body.doc_ids.map(Number)) : null;
+      let count = 0;
+      for (const d of db.docs) {
+        if (String(d.suggested_new_label || "").toLowerCase() !== sug) continue;
+        if (idSet && !idSet.has(d.id)) continue;
+        d.suggested_new_label = "";
+        count += 1;
+      }
+      return jsonResponse({ dismissed_count: count });
+    }
+
+    if (path === "/api/labels/rename" && method === "POST") {
+      const body = await parseBody(init);
+      const oldClean = normalizeLabelPath(body.old_label || "");
+      const newClean = normalizeLabelPath(body.new_label || "");
+      const oldLow = oldClean.toLowerCase();
+      const oldPrefix = `${oldLow}/`;
+      const remap = (lbl) => {
+        const norm = normalizeLabelPath(lbl || "");
+        const low = norm.toLowerCase();
+        if (low === oldLow) return newClean;
+        if (low.startsWith(oldPrefix)) return `${newClean}/${norm.slice(oldClean.length + 1)}`;
+        return norm;
+      };
+      const seen = new Set();
+      db.settings.categories = db.settings.categories
+        .map(remap)
+        .filter((c) => {
+          const k = c.toLowerCase();
+          if (!c || seen.has(k)) return false;
+          seen.add(k);
+          return true;
+        });
+      if (newClean && !seen.has(newClean.toLowerCase())) db.settings.categories.push(newClean);
+      db.settings.filing_rules.forEach((r) => {
+        r.target_label = remap(r.target_label);
+      });
+      let movedCount = 0;
+      for (const d of db.docs) {
+        const curLow = String(d.category || "").toLowerCase();
+        const sugLow = String(d.suggested_new_label || "").toLowerCase();
+        if (body.relocate_files !== false && (curLow === oldLow || curLow.startsWith(oldPrefix))) {
+          d.category = remap(d.category);
+          if (sugLow === oldLow || sugLow.startsWith(oldPrefix)) d.suggested_new_label = "";
+          syncDocPaths(d);
+          movedCount += 1;
+        } else if (sugLow === oldLow || sugLow.startsWith(oldPrefix)) {
+          const nextSug = remap(d.suggested_new_label);
+          d.suggested_new_label = nextSug.toLowerCase() === String(d.category || "").toLowerCase() ? "" : nextSug;
+        }
+      }
+      return jsonResponse({ old_label: oldClean, new_label: newClean, moved_count: movedCount, categories: db.settings.categories, errors: [] });
+    }
+
+    if (path === "/api/labels/delete" && method === "POST") {
+      const body = await parseBody(init);
+      const cleanLbl = normalizeLabelPath(body.label || "");
+      const targetLbl = normalizeLabelPath(body.reassign_to || "Other", "Other");
+      const low = cleanLbl.toLowerCase();
+      const prefix = `${low}/`;
+      db.settings.categories = db.settings.categories.filter((c) => {
+        const cl = String(c).toLowerCase();
+        return cl !== low && !cl.startsWith(prefix);
+      });
+      if (!db.settings.categories.length) db.settings.categories = ["Other"];
+      db.settings.filing_rules = db.settings.filing_rules.filter((r) => {
+        const tl = String(r.target_label || "").toLowerCase();
+        return tl !== low && !tl.startsWith(prefix);
+      });
+      let movedCount = 0;
+      for (const d of db.docs) {
+        const curLow = String(d.category || "").toLowerCase();
+        const sugLow = String(d.suggested_new_label || "").toLowerCase();
+        if (body.relocate_files && (curLow === low || curLow.startsWith(prefix))) {
+          d.category = targetLbl;
+          d.suggested_new_label = "";
+          syncDocPaths(d);
+          movedCount += 1;
+        } else if (sugLow === low || sugLow.startsWith(prefix)) {
+          d.suggested_new_label = "";
+        }
+      }
+      return jsonResponse({ deleted_label: cleanLbl, moved_count: movedCount, categories: db.settings.categories, filing_rules: db.settings.filing_rules, errors: [] });
+    }
+
+    if (path === "/api/rules") {
+      if (method === "GET") return jsonResponse({ rules: db.settings.filing_rules });
+      if (method === "POST") {
+        const body = await parseBody(init);
+        const rule = learnDemoRule(body, body.target_label || "Other");
+        if (!rule) return jsonResponse({ detail: "Provide match keywords or an instruction." }, 400);
+        return jsonResponse({ rules: db.settings.filing_rules, rule });
+      }
+    }
+
+    const delRuleMatch = /^\/api\/rules\/([^/]+)$/.exec(path);
+    if (delRuleMatch && method === "DELETE") {
+      const ruleId = decodeURIComponent(delRuleMatch[1]);
+      db.settings.filing_rules = db.settings.filing_rules.filter((r) => String(r.id) !== ruleId);
+      return jsonResponse({ rules: db.settings.filing_rules });
     }
 
     if (path === "/api/review" && method === "GET") {
@@ -1088,11 +1548,14 @@
 
     const approveMatch = /^\/api\/review\/(\d+)\/approve$/.exec(path);
     if (approveMatch && method === "POST") {
+      const blocked = demoQuotaErrorResponse();
+      if (blocked) return blocked;
       const itemId = Number(approveMatch[1]);
       const idx = db.reviewItems.findIndex((i) => i.id === itemId);
       if (idx === -1) return jsonResponse({ detail: "Review item not found" }, 404);
       const item = db.reviewItems.splice(idx, 1)[0];
       const body = await parseBody(init);
+      const chosenCat = normalizeLabelPath(body.category || item.suggested_category || "Other", "Other");
       const doc = {
         id: ++db.nextId,
         sha256: item.sha256,
@@ -1101,10 +1564,13 @@
         source_path: item.source_path,
         doc_date: body.date || item.suggested_date,
         doc_year: (body.date || item.suggested_date || "").slice(0, 4) || "Unknown Year",
-        category: body.category || item.suggested_category || "Other",
-        labels: [body.category || item.suggested_category || "Other"],
+        category: chosenCat,
+        labels: chosenCat.split("/").filter(Boolean),
         title: body.title || item.suggested_title,
         confidence: 1.0,
+        reliability_status: "verified",
+        reliability_reasons: ["Reviewed and approved by user"],
+        suggested_new_label: "",
         reason: "Approved from Review Queue.",
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -1112,6 +1578,10 @@
         extracted_text: item.extracted_text,
         preview_images: item.preview_images,
       };
+      if (body.add_category && !db.settings.categories.some((c) => c.toLowerCase() === chosenCat.toLowerCase())) {
+        db.settings.categories.push(chosenCat);
+      }
+      const learned = body.learn_rule ? learnDemoRule(body.learn_rule, chosenCat) : null;
       syncDocPaths(doc);
       db.docs.unshift(doc);
       db.activity.unshift({
@@ -1125,7 +1595,7 @@
         preview_images: doc.preview_images,
         timestamp: new Date().toISOString(),
       });
-      return jsonResponse({ document: doc, pending_count: db.reviewItems.length });
+      return jsonResponse({ document: doc, pending_count: db.reviewItems.length, ...(learned ? { learned_rule: learned } : {}) });
     }
 
     const dismissMatch = /^\/api\/review\/(\d+)\/dismiss$/.exec(path);
@@ -1135,6 +1605,55 @@
       if (idx === -1) return jsonResponse({ detail: "Review item not found" }, 404);
       const item = db.reviewItems.splice(idx, 1)[0];
       return jsonResponse({ item, pending_count: db.reviewItems.length });
+    }
+
+    if (path === "/api/license" && method === "GET") {
+      return jsonResponse(buildLicenseStatus());
+    }
+
+    if (path === "/api/license/activate" && method === "POST") {
+      const body = await parseBody(init);
+      const key = String(body.license_key || "").trim();
+      if (!key || key.toUpperCase() === "INVALID") {
+        return jsonResponse(
+          { detail: { code: "invalid_key", message: "License key not found or invalid." } },
+          400
+        );
+      }
+      const upper = key.toUpperCase();
+      const isStarter = upper.startsWith("DVS-");
+      const nowIso = new Date().toISOString();
+      db.license = {
+        status: "granted",
+        tier: isStarter ? "starter" : "personal",
+        tier_label: isStarter ? "Starter (1 Mac)" : "Personal (3 Macs)",
+        display_key: key.length <= 6 ? "****" : `****-${key.slice(-6)}`,
+        activation_id: `demo-act-${Date.now()}`,
+        limit_activations: isStarter ? 1 : 3,
+        label: String(body.label || "Demo MacBook Pro"),
+        activated_at: nowIso,
+        last_validated_at: nowIso,
+      };
+      return jsonResponse(buildLicenseStatus());
+    }
+
+    if (path === "/api/license/validate" && method === "POST") {
+      if (db.license) {
+        db.license.last_validated_at = new Date().toISOString();
+      }
+      return jsonResponse({
+        ...buildLicenseStatus(),
+        validation: { checked: Boolean(db.license), valid: Boolean(db.license), offline: false },
+      });
+    }
+
+    if (path === "/api/license/deactivate" && method === "POST") {
+      db.license = null;
+      return jsonResponse({
+        ...buildLicenseStatus(),
+        deactivated: true,
+        remote_deactivated: true,
+      });
     }
 
     if (path === "/api/licenses" && method === "GET") {

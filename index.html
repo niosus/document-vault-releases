@@ -9,8 +9,12 @@
     content="Turn messy PDF and photo scans into a clean, searchable Finder archive — 100% locally on Apple Silicon using built-in MLX Vision AI."
   />
   <meta name="releases-json" content="./latest.json" />
-  <meta name="releases-json-fallback" content="https://niosus.github.io/document-vault-releases/latest.json" />
+  <meta name="releases-json-fallback" content="https://document-vault.app/latest.json" />
   <meta name="releases-repo" content="niosus/document-vault-releases" />
+  <meta name="polar-checkout-starter" content="" />
+  <meta name="polar-checkout-personal" content="" />
+  <meta name="business-contact-email" content="hello@document-vault.app" />
+  <link rel="canonical" href="https://document-vault.app/" />
 
   <link rel="icon" type="image/png" sizes="32x32" href="./assets/favicon-32x32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="./assets/favicon-16x16.png" />
@@ -49,6 +53,7 @@
         <a href="#features">Features</a>
         <a href="#how-it-works">How It Works</a>
         <a href="#privacy">Privacy</a>
+        <a href="#pricing">Pricing</a>
         <a href="#releases">Releases</a>
       </nav>
 
@@ -379,6 +384,106 @@
       </div>
     </section>
 
+    <section id="pricing" class="section">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-kicker">Simple One-Time Pricing</div>
+          <h2>Try free up to 30 documents. Buy once, own it forever.</h2>
+          <p>
+            No recurring subscriptions or per-page fees. Existing Finder browsing stays free forever,
+            and deleting a processed document from your vault frees its slot.
+          </p>
+        </div>
+
+        <div class="pricing-toolbar">
+          <span class="pricing-currency-hint">Regional currency display (Polar detects local currency &amp; VAT at checkout):</span>
+          <div id="pricing-currency-switch" class="pricing-currency-switch" role="group" aria-label="Pricing currency">
+            <button type="button" class="currency-opt-btn is-active" data-currency="USD" aria-pressed="true">$ USD</button>
+            <button type="button" class="currency-opt-btn" data-currency="EUR" aria-pressed="false">€ EUR</button>
+            <button type="button" class="currency-opt-btn" data-currency="CHF" aria-pressed="false">CHF</button>
+          </div>
+        </div>
+
+        <div class="pricing-grid">
+          <article class="pricing-card">
+            <div class="pricing-card-head">
+              <h3>Free</h3>
+              <span class="pricing-badge">Trial</span>
+            </div>
+            <div class="pricing-price">
+              <span id="price-free" class="pricing-amount" data-amount="0">$0</span>
+              <span class="pricing-billing">Up to 30 processed docs</span>
+            </div>
+            <p class="pricing-desc">Full local MLX Vision filing in your active vault — no credit card needed.</p>
+            <ul class="pricing-features">
+              <li><span class="mark-good">✓</span><span>Up to 30 AI-processed docs per active vault</span></li>
+              <li><span class="mark-good">✓</span><span>Deleting a doc frees its quota slot</span></li>
+              <li><span class="mark-good">✓</span><span>Pre-existing Finder files stay unlimited</span></li>
+            </ul>
+            <a class="btn btn-secondary pricing-cta" href="#download-panel">Download Free (.dmg)</a>
+          </article>
+
+          <article class="pricing-card">
+            <div class="pricing-card-head">
+              <h3>Starter</h3>
+              <span class="pricing-badge">1 Mac</span>
+            </div>
+            <div class="pricing-price">
+              <span id="price-starter" class="pricing-amount" data-amount="19">$19</span>
+              <span class="pricing-billing">One-time · 1 seat</span>
+            </div>
+            <p class="pricing-desc">Everything you need to automate your personal paperless archive on one Mac.</p>
+            <ul class="pricing-features">
+              <li><span class="mark-good">✓</span><span>Unlimited AI-processed documents</span></li>
+              <li><span class="mark-good">✓</span><span>1 Mac activation (transferable)</span></li>
+              <li><span class="mark-good">✓</span><span>Works 100% offline after activation</span></li>
+              <li><span class="mark-good">✓</span><span>All v1.x Sparkle updates included</span></li>
+            </ul>
+            <a id="btn-buy-starter" class="btn btn-secondary pricing-cta" href="#pricing" data-plan="starter">Buy Starter</a>
+          </article>
+
+          <article class="pricing-card is-popular">
+            <div class="pricing-card-head">
+              <h3>Personal</h3>
+              <span class="pricing-badge is-popular">Most Popular</span>
+            </div>
+            <div class="pricing-price">
+              <span id="price-personal" class="pricing-amount" data-amount="29">$29</span>
+              <span class="pricing-billing">One-time · 3 seats</span>
+            </div>
+            <p class="pricing-desc">For your desktop + MacBook + backup Mac, or sharing across personal devices.</p>
+            <ul class="pricing-features">
+              <li><span class="mark-good">✓</span><span>Unlimited AI-processed documents</span></li>
+              <li><span class="mark-good">✓</span><span>Up to 3 Mac activations</span></li>
+              <li><span class="mark-good">✓</span><span>Deactivate &amp; move seats anytime</span></li>
+              <li><span class="mark-good">✓</span><span>All v1.x Sparkle updates included</span></li>
+            </ul>
+            <a id="btn-buy-personal" class="btn btn-primary pricing-cta" href="#pricing" data-plan="personal">Buy Personal</a>
+          </article>
+
+          <article class="pricing-card">
+            <div class="pricing-card-head">
+              <h3>Business</h3>
+              <span class="pricing-badge">5+ Macs</span>
+            </div>
+            <div class="pricing-price">
+              <span class="pricing-amount">Custom</span>
+              <span class="pricing-billing">Teams &amp; invoicing</span>
+            </div>
+            <p class="pricing-desc">Multi-seat deployment, shared office vaults, or custom procurement paperwork.</p>
+            <ul class="pricing-features">
+              <li><span class="mark-good">✓</span><span>5+ Mac seats for teams &amp; practices</span></li>
+              <li><span class="mark-good">✓</span><span>Custom VAT invoicing &amp; PO support</span></li>
+              <li><span class="mark-good">✓</span><span>Direct founder onboarding support</span></li>
+            </ul>
+            <a id="btn-contact-business" class="btn btn-secondary pricing-cta" href="mailto:hello@document-vault.app?subject=Document%20Vault%20Business%20License">Contact Us</a>
+          </article>
+        </div>
+
+        <div id="pricing-checkout-note" class="pricing-checkout-note hidden" role="status"></div>
+      </div>
+    </section>
+
     <section id="releases" class="section">
       <div class="container">
         <div class="section-header">
@@ -396,7 +501,7 @@
             </div>
             <div class="releases-links">
               <a id="all-releases-link" href="https://github.com/niosus/document-vault-releases/releases" target="_blank" rel="noopener">All GitHub Releases →</a>
-              <a id="appcast-link" href="https://niosus.github.io/document-vault-releases/appcast.xml" target="_blank" rel="noopener">Sparkle Appcast</a>
+              <a id="appcast-link" href="https://document-vault.app/appcast.xml" target="_blank" rel="noopener">Sparkle Appcast</a>
             </div>
           </div>
 
@@ -443,12 +548,15 @@
       <div class="footer-links">
         <a href="#features">Features</a>
         <a href="#privacy">Privacy</a>
+        <a href="#pricing">Pricing</a>
+        <a id="footer-support-link" href="mailto:support@document-vault.app?subject=Document%20Vault%20Support">Support</a>
         <a id="footer-releases-link" href="https://github.com/niosus/document-vault-releases/releases" target="_blank" rel="noopener">GitHub Releases</a>
-        <a id="footer-appcast-link" href="https://niosus.github.io/document-vault-releases/appcast.xml" target="_blank" rel="noopener">appcast.xml</a>
+        <a id="footer-appcast-link" href="https://document-vault.app/appcast.xml" target="_blank" rel="noopener">appcast.xml</a>
       </div>
     </div>
   </footer>
 
+  <script defer data-auto-init src="https://cdn.jsdelivr.net/npm/@polar-sh/checkout@latest/dist/embed.global.js"></script>
   <script src="./app.js"></script>
 </body>
 </html>
