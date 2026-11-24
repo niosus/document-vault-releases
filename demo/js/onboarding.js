@@ -10,7 +10,7 @@ import {
   startModelDownload,
   updateModelSelectButtons,
 } from "./settings_models.js";
-import { renderCategoryChips } from "./settings_taxonomy.js";
+import { renderCategoryTree } from "./settings_taxonomy.js";
 import { $, $$, state } from "./state.js";
 import { switchTab } from "./tabs.js";
 import { api, prefersReducedMotion, toast } from "./utils.js";
@@ -390,7 +390,7 @@ export function initOnboardingListeners() {
       const res = await api("/api/vault/reconstruct", { method: "POST" });
       state.settings = res.settings;
       const rec = res.reconstruction || {};
-      renderCategoryChips([...(res.settings.categories || [])]);
+      renderCategoryTree([...(res.settings.categories || [])]);
       toast(
         `Vault synced: +${rec.indexed_added ?? 0} indexed, ${rec.rebased ?? 0} rebased, ${rec.previews_rebuilt ?? 0} previews rebuilt, ${rec.pruned ?? 0} pruned`
       );

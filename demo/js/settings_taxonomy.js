@@ -1,334 +1,484 @@
-/** Settings label chips, label rename/merge/delete modal, and filing rules list/form. */
+/** Settings hierarchical category tree, filtering, and inline sub-label creation. */
 
-import { closeAnimatedModal, setModalCompact, showAnimatedModal } from "./modals.js";
-import {
-  loadSettingsIntoForm,
-  saveSettingsAuto,
-  updatePromptPreviewAndBadge,
-  updateSettingsPathPreview,
-} from "./settings.js";
+import { saveSettingsAuto, updatePromptPreviewAndBadge } from "./settings.js";
+import { deleteCategoryPath, openRenameLabelModal } from "./settings_label_modals.js";
+import { initFilingRuleListeners } from "./settings_rules.js";
 import { $, state } from "./state.js";
 import {
-  api,
   buildCategoryOptions,
-  esc,
   formatLabelDisplay,
   getCategoryTone,
   toast,
 } from "./utils.js";
-import { loadVaultDocuments } from "./vault_grid.js";
 
-function openRenameLabelModal(oldLabel) {
-  const modal = $("#doc-modal");
-  setModalCompact(true);
-  $("#modal-title").textContent = `Rename / Merge Label: ${formatLabelDisplay(oldLabel)}`;
-  $("#modal-body").innerHTML = `
-    <div class="reclass-modal-body">
-      <label class="field">
-        <span>New Label Path <small class="muted">(enter an existing label to merge, or a new path like Housing/Utilities)</small></span>
-        <input id="rename-label-input" type="text" value="${esc(oldLabel)}" />
-      </label>
-      <label class="checkbox-field" style="font-size:12.5px;">
-        <input id="rename-label-relocate-cb" type="checkbox" checked />
-        <span>Also move matching filed documents in the Vault to the new folder</span>
-      </label>
-      <div class="modal-footer-actions">
-        <button id="rename-label-cancel" type="button" class="btn btn-secondary">Cancel</button>
-        <button id="rename-label-save" type="button" class="btn btn-primary">Rename / Merge</button>
-      </div>
-    </div>
-  `;
-  $("#rename-label-cancel")?.addEventListener("click", () => closeAnimatedModal(modal));
-  $("#rename-label-save")?.addEventListener("click", async () => {
-    const nextVal = ($("#rename-label-input")?.value || "").trim();
-    if (!nextVal) {
-      toast("Enter a target label name.", true);
-      return;
-    }
-    const btn = $("#rename-label-save");
-    btn.disabled = true;
-    btn.textContent = "Applying…";
-    try {
-      const res = await api("/api/labels/rename", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          old_label: oldLabel,
-          new_label: nextVal,
-          relocate_files: Boolean($("#rename-label-relocate-cb")?.checked),
-        }),
-      });
-      toast(`Renamed "${formatLabelDisplay(oldLabel)}" → "${formatLabelDisplay(res.new_label)}" (${res.moved_count} moved)`);
-      closeAnimatedModal(modal);
-      await loadSettingsIntoForm();
-      if ($("#tab-vault")?.classList.contains("active")) {
-        await loadVaultDocuments({ reason: "refresh", reconcile: false });
-      }
-    } catch (err) {
-      toast(err.message, true);
-      btn.disabled = false;
-      btn.textContent = "Rename / Merge";
-    }
-  });
-  showAnimatedModal(modal);
-}
+const collapsedCategoryPaths = new Set();
+const branchUiByPath = new Map();
+let activeInlineAddParent = null;
+let categoryFilterQuery = "";
 
-export function renderCategoryChips(categories) {
-  const container = $("#category-chips");
-  if (!container) return;
-  container.innerHTML = "";
-  const sorted = [...categories].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
-  sorted.forEach((cat) => {
-    const chip = document.createElement("span");
-    chip.className = `chip ${getCategoryTone(cat)}`;
-    const label = document.createElement("span");
-    const parts = String(cat).split("/").filter(Boolean);
-    if (parts.length > 1) {
-      const prefix = document.createElement("span");
-      prefix.className = "chip-parent-prefix";
-      prefix.textContent = `${parts.slice(0, -1).join(" / ")} / `;
-      const leaf = document.createElement("span");
-      leaf.textContent = parts[parts.length - 1];
-      label.appendChild(prefix);
-      label.appendChild(leaf);
-    } else {
-      label.textContent = cat;
-    }
+const ICON_CHEVRON = `<svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg>`;
+const ICON_PLUS = `<svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>`;
+const ICON_PENCIL = `<svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.5 2.5a1.4 1.4 0 0 1 2 2L5.5 12.5l-3 .75.75-3z"/></svg>`;
+const ICON_TRASH = `<svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 4.5h11M6 4.5V3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1.5M5 4.5l.5 8.5a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1l.5-8.5"/></svg>`;
 
-    const addSubBtn = document.createElement("button");
-    addSubBtn.type = "button";
-    addSubBtn.className = "chip-action-btn";
-    addSubBtn.title = `Add sub-label under ${cat}`;
-    addSubBtn.textContent = "+";
-    addSubBtn.addEventListener("click", () => {
-      const inp = $("#new-category-input");
-      if (inp) {
-        inp.value = `${cat}/`;
-        inp.focus();
-      }
-    });
-
-    const renameBtn = document.createElement("button");
-    renameBtn.type = "button";
-    renameBtn.className = "chip-action-btn";
-    renameBtn.title = `Rename or merge ${cat}`;
-    renameBtn.textContent = "✎";
-    renameBtn.addEventListener("click", () => openRenameLabelModal(cat));
-
-    const removeBtn = document.createElement("button");
-    removeBtn.type = "button";
-    removeBtn.title = "Remove";
-    removeBtn.textContent = "×";
-    removeBtn.addEventListener("click", async () => {
-      if (String(cat).toLowerCase() === "other") {
-        toast("Cannot remove the fallback 'Other' label.", true);
-        return;
-      }
-      if (state.settings.categories.length <= 1) {
-        toast("Keep at least one category.", true);
-        return;
-      }
-      const catLower = String(cat).toLowerCase();
-      const catPrefix = `${catLower}/`;
-      const hasChildren = (state.settings.categories || []).some((c) => c.toLowerCase().startsWith(catPrefix));
-      const hasRules = (state.settings.filing_rules || []).some(
-        (r) => String(r.target_label || "").toLowerCase() === catLower || String(r.target_label || "").toLowerCase().startsWith(catPrefix)
-      );
-      const executeDelete = async (relocateFiles = false) => {
-        const res = await api("/api/labels/delete", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            label: cat,
-            reassign_to: "Other",
-            relocate_files: relocateFiles,
-          }),
-        });
-        state.settings.categories = res.categories || ["Other"];
-        state.settings.filing_rules = res.filing_rules || [];
-        renderCategoryChips(state.settings.categories);
-        renderFilingRules(state.settings.filing_rules);
-        updatePromptPreviewAndBadge();
-        updateSettingsPathPreview();
-        if ($("#tab-vault")?.classList.contains("active")) {
-          loadVaultDocuments({ reason: "refresh", reconcile: false });
-        }
-        toast(`Removed "${formatLabelDisplay(cat)}"${res.moved_count ? ` (${res.moved_count} moved)` : ""}`);
-      };
-
-      if (hasChildren || hasRules) {
-        const modal = $("#doc-modal");
-        setModalCompact(true);
-        $("#modal-title").textContent = `Delete Label: ${formatLabelDisplay(cat)}`;
-        $("#modal-body").innerHTML = `
-          <div class="reclass-modal-body">
-            <p class="muted" style="margin:0;">
-              Deleting <strong>${esc(formatLabelDisplay(cat))}</strong> will also remove any nested sub-labels and linked filing rules.
-            </p>
-            <label class="checkbox-field" style="font-size:12.5px;">
-              <input id="del-label-relocate-cb" type="checkbox" />
-              <span>Also move filed documents from this label into <strong>Other</strong></span>
-            </label>
-            <div class="modal-footer-actions">
-              <button id="del-label-cancel" type="button" class="btn btn-secondary">Cancel</button>
-              <button id="del-label-confirm" type="button" class="btn btn-danger">Delete Label</button>
-            </div>
-          </div>
-        `;
-        $("#del-label-cancel")?.addEventListener("click", () => closeAnimatedModal(modal));
-        $("#del-label-confirm")?.addEventListener("click", async () => {
-          const btn = $("#del-label-confirm");
-          btn.disabled = true;
-          try {
-            await executeDelete(Boolean($("#del-label-relocate-cb")?.checked));
-            closeAnimatedModal(modal);
-          } catch (err) {
-            toast(err.message, true);
-            btn.disabled = false;
-          }
-        });
-        showAnimatedModal(modal);
-        return;
-      }
-
-      try {
-        await executeDelete(false);
-      } catch (err) {
-        toast(err.message, true);
-      }
-    });
-
-    chip.appendChild(label);
-    chip.appendChild(addSubBtn);
-    chip.appendChild(renameBtn);
-    chip.appendChild(removeBtn);
-    container.appendChild(chip);
-  });
-  const ruleTargetSel = $("#rule-target-select");
-  if (ruleTargetSel) {
-    ruleTargetSel.innerHTML = buildCategoryOptions(ruleTargetSel.value || (categories[0] || "Other"));
-  }
-}
-
-export function renderFilingRules(rules) {
-  const listEl = $("#filing-rules-list");
-  if (!listEl) return;
-  const ruleTargetSel = $("#rule-target-select");
-  if (ruleTargetSel) {
-    ruleTargetSel.innerHTML = buildCategoryOptions(ruleTargetSel.value || (state.settings?.categories?.[0] || "Other"));
-  }
-  if (!rules || !rules.length) {
-    listEl.innerHTML = `<div class="muted" style="font-size:12px;">No filing rules yet. Teach the organizer by changing a document's label or adding a rule above.</div>`;
-    return;
-  }
-  listEl.innerHTML = "";
-  rules.forEach((rule) => {
-    const row = document.createElement("div");
-    row.className = "filing-rule-row";
-    const kws = Array.isArray(rule.match_keywords) && rule.match_keywords.length
-      ? `<code>${esc(rule.match_keywords.join(", "))}</code>`
-      : "";
-    const instr = rule.instruction ? `<span class="muted">${esc(rule.instruction)}</span>` : "";
-    row.innerHTML = `
-      <div class="filing-rule-main">
-        <input type="checkbox" class="rule-enabled-cb" ${rule.enabled !== false ? "checked" : ""} title="Enable or disable rule" />
-        ${kws}
-        ${instr}
-        <span class="muted">→</span>
-        <span class="tag ${getCategoryTone(rule.target_label)}">${esc(formatLabelDisplay(rule.target_label))}</span>
-      </div>
-      <div class="filing-rule-actions">
-        <button type="button" class="btn btn-ghost-danger btn-xs rule-delete-btn">Delete</button>
-      </div>
-    `;
-    row.querySelector(".rule-enabled-cb")?.addEventListener("change", async (e) => {
-      try {
-        const res = await api("/api/rules", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...rule, enabled: e.target.checked }),
-        });
-        state.settings.filing_rules = res.rules || [];
-        toast(e.target.checked ? "Rule enabled" : "Rule paused");
-      } catch (err) {
-        toast(err.message, true);
-        e.target.checked = !e.target.checked;
-      }
-    });
-    row.querySelector(".rule-delete-btn")?.addEventListener("click", async () => {
-      try {
-        const res = await api(`/api/rules/${encodeURIComponent(rule.id)}`, { method: "DELETE" });
-        state.settings.filing_rules = res.rules || [];
-        renderFilingRules(state.settings.filing_rules);
-        toast("Filing rule deleted");
-      } catch (err) {
-        toast(err.message, true);
-      }
-    });
-    listEl.appendChild(row);
-  });
-}
-
-function addCategoryFromInput() {
-  const inp = $("#new-category-input");
-  const val = inp.value
+function normalizeLabelInput(raw) {
+  return String(raw || "")
     .split("/")
     .map((s) => s.trim())
     .filter(Boolean)
     .join("/");
-  if (!val) return;
-  if (!state.settings.categories.some((c) => c.toLowerCase() === val.toLowerCase())) {
-    state.settings.categories.push(val);
-    renderCategoryChips(state.settings.categories);
+}
+
+function sortTreeNodes(nodes, isRoot = false) {
+  nodes.sort((a, b) => {
+    if (isRoot) {
+      const aOther = a.path.toLowerCase() === "other";
+      const bOther = b.path.toLowerCase() === "other";
+      if (aOther !== bOther) return aOther ? 1 : -1;
+    }
+    return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+  });
+  nodes.forEach((node) => {
+    if (node.children.length) sortTreeNodes(node.children, false);
+  });
+  return nodes;
+}
+
+export function buildCategoryTree(categories) {
+  const nodesByLower = new Map();
+  const ordered = [...(categories || [])]
+    .map((c) => normalizeLabelInput(c))
+    .filter(Boolean)
+    .sort((a, b) => a.split("/").length - b.split("/").length || a.localeCompare(b, undefined, { sensitivity: "base" }));
+
+  for (const fullPath of ordered) {
+    const parts = fullPath.split("/");
+    for (let idx = 0; idx < parts.length; idx += 1) {
+      const seg = parts[idx];
+      const subLower = parts.slice(0, idx + 1).join("/").toLowerCase();
+      const isLeaf = idx === parts.length - 1;
+      if (!nodesByLower.has(subLower)) {
+        const parentLower = idx > 0 ? parts.slice(0, idx).join("/").toLowerCase() : "";
+        const parentNode = parentLower ? nodesByLower.get(parentLower) : null;
+        const canonPath = parentNode ? `${parentNode.path}/${seg}` : seg;
+        const node = {
+          path: canonPath,
+          name: seg,
+          explicit: isLeaf,
+          children: [],
+        };
+        nodesByLower.set(subLower, node);
+      } else if (isLeaf) {
+        nodesByLower.get(subLower).explicit = true;
+      }
+    }
+  }
+
+  const roots = [];
+  for (const node of nodesByLower.values()) {
+    const parts = node.path.split("/");
+    if (parts.length <= 1) {
+      roots.push(node);
+    } else {
+      const parentLower = parts.slice(0, -1).join("/").toLowerCase();
+      const parent = nodesByLower.get(parentLower);
+      if (parent) parent.children.push(node);
+      else roots.push(node);
+    }
+  }
+  return sortTreeNodes(roots, true);
+}
+
+function countDescendants(node) {
+  return node.children.reduce((sum, child) => sum + 1 + countDescendants(child), 0);
+}
+
+function collectParentPaths(nodes, out = []) {
+  for (const node of nodes) {
+    if (node.children.length) {
+      out.push(node.path.toLowerCase());
+      collectParentPaths(node.children, out);
+    }
+  }
+  return out;
+}
+
+function updateCollapseAllButton(roots) {
+  const toggleAllBtn = $("#toggle-all-categories-btn");
+  if (!toggleAllBtn) return;
+  const parentPaths = collectParentPaths(roots);
+  if (!parentPaths.length || categoryFilterQuery) {
+    toggleAllBtn.classList.add("hidden");
+    return;
+  }
+  toggleAllBtn.classList.remove("hidden");
+  const anyCollapsed = parentPaths.some((p) => collapsedCategoryPaths.has(p));
+  toggleAllBtn.textContent = anyCollapsed ? "Expand all" : "Collapse all";
+  toggleAllBtn.dataset.mode = anyCollapsed ? "expand" : "collapse";
+}
+
+function expandAncestors(path) {
+  const parts = normalizeLabelInput(path).split("/").filter(Boolean);
+  for (let i = 1; i < parts.length; i += 1) {
+    collapsedCategoryPaths.delete(parts.slice(0, i).join("/").toLowerCase());
+  }
+}
+
+function addCategoryPath(rawPath) {
+  const val = normalizeLabelInput(rawPath);
+  if (!val) return false;
+  const list = state.settings.categories || [];
+  if (!list.some((c) => c.toLowerCase() === val.toLowerCase())) {
+    list.push(val);
+    state.settings.categories = list;
+    expandAncestors(val);
+    renderCategoryTree(list);
     updatePromptPreviewAndBadge();
     saveSettingsAuto();
+    return true;
   }
+  toast(`"${formatLabelDisplay(val)}" already exists.`);
+  return false;
+}
+
+function createActionButton({ className = "", title = "", ariaLabel = "", svg = "", label = "", onClick }) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = `category-tree-action-btn ${className}`.trim();
+  if (title) btn.title = title;
+  if (ariaLabel) btn.setAttribute("aria-label", ariaLabel);
+  if (svg) btn.innerHTML = svg;
+  if (label) {
+    const span = document.createElement("span");
+    span.textContent = label;
+    btn.appendChild(span);
+  }
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation?.();
+    onClick();
+  });
+  return btn;
+}
+
+function createInlineAddRow(parentNode) {
+  const row = document.createElement("div");
+  row.className = "category-tree-inline-add";
+
+  const swatch = document.createElement("span");
+  swatch.className = `category-tree-swatch is-sub ${getCategoryTone(parentNode.path)}`;
+  swatch.setAttribute("aria-hidden", "true");
+
+  const input = document.createElement("input");
+  input.type = "text";
+  input.className = "category-tree-inline-input";
+  input.placeholder = `Sub-label under ${parentNode.name}…`;
+  input.setAttribute("aria-label", `New sub-label under ${parentNode.path}`);
+
+  const submit = () => {
+    const childPath = normalizeLabelInput(input.value);
+    if (!childPath) {
+      activeInlineAddParent = null;
+      renderCategoryTree(state.settings.categories || []);
+      return;
+    }
+    const fullPath = `${parentNode.path}/${childPath}`;
+    activeInlineAddParent = null;
+    addCategoryPath(fullPath);
+  };
+
+  const cancel = () => {
+    activeInlineAddParent = null;
+    renderCategoryTree(state.settings.categories || []);
+  };
+
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      submit();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      cancel();
+    }
+  });
+
+  const addBtn = document.createElement("button");
+  addBtn.type = "button";
+  addBtn.className = "btn btn-primary btn-xs";
+  addBtn.textContent = "Add";
+  addBtn.addEventListener("click", submit);
+
+  const cancelBtn = document.createElement("button");
+  cancelBtn.type = "button";
+  cancelBtn.className = "btn btn-secondary btn-xs";
+  cancelBtn.textContent = "Cancel";
+  cancelBtn.addEventListener("click", cancel);
+
+  row.appendChild(swatch);
+  row.appendChild(input);
+  row.appendChild(addBtn);
+  row.appendChild(cancelBtn);
+  return { row, input };
+}
+
+function setBranchCollapsedState(key, collapsed) {
+  if (collapsed) collapsedCategoryPaths.add(key);
+  else collapsedCategoryPaths.delete(key);
+
+  const refs = branchUiByPath.get(key);
+  if (!refs) return;
+  const { row, toggleBtn, countBadge, shell, path } = refs;
+  const expandedStr = collapsed ? "false" : "true";
+  row.setAttribute("aria-expanded", expandedStr);
+  if (toggleBtn) {
+    toggleBtn.setAttribute("aria-expanded", expandedStr);
+    toggleBtn.setAttribute("aria-label", `${collapsed ? "Expand" : "Collapse"} ${path}`);
+  }
+  if (countBadge) {
+    countBadge.classList.toggle("hidden", !collapsed);
+  }
+  if (shell) {
+    shell.classList.toggle("is-collapsed", collapsed);
+    shell.setAttribute("aria-hidden", collapsed ? "true" : "false");
+    shell.inert = collapsed;
+  }
+}
+
+function renderTreeNode(node, depth = 0) {
+  const branch = document.createElement("div");
+  branch.className = "category-tree-branch";
+  branch.dataset.category = node.path;
+
+  const key = node.path.toLowerCase();
+  const isOther = key === "other";
+  const hasChildren = node.children.length > 0;
+  const isInlineTarget = Boolean(activeInlineAddParent && activeInlineAddParent.toLowerCase() === key);
+  const isCollapsed = !isInlineTarget && !categoryFilterQuery && collapsedCategoryPaths.has(key);
+
+  const row = document.createElement("div");
+  row.className = `category-tree-row${isOther ? " is-other" : ""}`;
+  row.dataset.category = node.path;
+  row.dataset.depth = String(depth);
+  row.setAttribute("role", "treeitem");
+  if (hasChildren) {
+    row.setAttribute("aria-expanded", isCollapsed ? "false" : "true");
+  }
+
+  const main = document.createElement("div");
+  main.className = "category-tree-main";
+
+  let toggleBtn = null;
+  if (hasChildren) {
+    toggleBtn = document.createElement("button");
+    toggleBtn.type = "button";
+    toggleBtn.className = "category-tree-toggle";
+    toggleBtn.setAttribute("aria-expanded", isCollapsed ? "false" : "true");
+    toggleBtn.setAttribute("aria-label", `${isCollapsed ? "Expand" : "Collapse"} ${node.path}`);
+    toggleBtn.innerHTML = ICON_CHEVRON;
+    toggleBtn.addEventListener("click", () => {
+      const nextCollapsed = !collapsedCategoryPaths.has(key);
+      setBranchCollapsedState(key, nextCollapsed);
+      updateCollapseAllButton(buildCategoryTree(state.settings?.categories || []));
+    });
+    main.appendChild(toggleBtn);
+  } else if (depth === 0) {
+    const spacer = document.createElement("span");
+    spacer.className = "category-tree-toggle-spacer";
+    spacer.setAttribute("aria-hidden", "true");
+    main.appendChild(spacer);
+  }
+
+  const swatch = document.createElement("span");
+  swatch.className = `category-tree-swatch ${depth > 0 ? "is-sub " : ""}${getCategoryTone(node.path)}`.trim();
+  swatch.setAttribute("aria-hidden", "true");
+  main.appendChild(swatch);
+
+  if (isOther) {
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "category-tree-name is-static";
+    nameSpan.textContent = node.name;
+    main.appendChild(nameSpan);
+
+    const badge = document.createElement("span");
+    badge.className = "category-tree-badge";
+    badge.textContent = "Fallback";
+    main.appendChild(badge);
+  } else {
+    const nameBtn = document.createElement("button");
+    nameBtn.type = "button";
+    nameBtn.className = `category-tree-name${depth > 0 ? " is-sub" : ""}`;
+    nameBtn.textContent = node.name;
+    nameBtn.title = `Rename or merge ${formatLabelDisplay(node.path)}`;
+    nameBtn.addEventListener("click", () => openRenameLabelModal(node.path));
+    main.appendChild(nameBtn);
+  }
+
+  let countBadge = null;
+  if (hasChildren) {
+    const count = countDescendants(node);
+    countBadge = document.createElement("span");
+    countBadge.className = `category-tree-count${isCollapsed ? "" : " hidden"}`;
+    countBadge.textContent = `${count} sub-label${count === 1 ? "" : "s"}`;
+    main.appendChild(countBadge);
+  }
+
+  const actions = document.createElement("div");
+  actions.className = "category-tree-actions";
+
+  actions.appendChild(
+    createActionButton({
+      className: "is-add",
+      title: `Add sub-label under ${formatLabelDisplay(node.path)}`,
+      ariaLabel: `Add sub-label under ${node.path}`,
+      svg: ICON_PLUS,
+      label: "Sub-label",
+      onClick: () => {
+        collapsedCategoryPaths.delete(key);
+        activeInlineAddParent = node.path;
+        renderCategoryTree(state.settings.categories || []);
+      },
+    })
+  );
+
+  if (!isOther) {
+    actions.appendChild(
+      createActionButton({
+        title: `Rename or merge ${formatLabelDisplay(node.path)}`,
+        ariaLabel: `Rename ${node.path}`,
+        svg: ICON_PENCIL,
+        onClick: () => openRenameLabelModal(node.path),
+      })
+    );
+    actions.appendChild(
+      createActionButton({
+        className: "is-danger",
+        title: `Remove ${formatLabelDisplay(node.path)}`,
+        ariaLabel: `Remove ${node.path}`,
+        svg: ICON_TRASH,
+        onClick: () =>
+          deleteCategoryPath(node.path, {
+            onAfterDelete: (deletedLower) => {
+              if (activeInlineAddParent && activeInlineAddParent.toLowerCase().startsWith(deletedLower)) {
+                activeInlineAddParent = null;
+              }
+              renderCategoryTree(state.settings.categories);
+            },
+          }),
+      })
+    );
+  }
+
+  row.appendChild(main);
+  row.appendChild(actions);
+  branch.appendChild(row);
+
+  let focusInput = null;
+  let shell = null;
+  if (hasChildren || isInlineTarget) {
+    shell = document.createElement("div");
+    shell.className = `category-tree-children-shell${isCollapsed ? " is-collapsed" : ""}`;
+    shell.setAttribute("aria-hidden", isCollapsed ? "true" : "false");
+    shell.inert = isCollapsed;
+
+    const childrenWrap = document.createElement("div");
+    childrenWrap.className = "category-tree-children";
+    childrenWrap.setAttribute("role", "group");
+    node.children.forEach((child) => {
+      const childRendered = renderTreeNode(child, depth + 1);
+      childrenWrap.appendChild(childRendered.branch);
+      if (childRendered.focusInput) focusInput = childRendered.focusInput;
+    });
+    if (isInlineTarget) {
+      const inlineAdded = createInlineAddRow(node);
+      childrenWrap.appendChild(inlineAdded.row);
+      focusInput = inlineAdded.input;
+    }
+    shell.appendChild(childrenWrap);
+    branch.appendChild(shell);
+  }
+
+  if (hasChildren) {
+    branchUiByPath.set(key, { row, toggleBtn, countBadge, shell, path: node.path });
+  }
+
+  return { branch, focusInput };
+}
+
+export function renderCategoryTree(categories) {
+  const container = $("#category-chips");
+  if (!container) return;
+  const allCategories = [...(categories || [])];
+
+  const countPill = $("#category-count-badge");
+  if (countPill) {
+    countPill.textContent = String(allCategories.length);
+    countPill.classList.toggle("hidden", allCategories.length === 0);
+  }
+
+  const filterInput = $("#category-filter-input");
+  if (filterInput) {
+    const showFilter = allCategories.length >= 10 || Boolean(categoryFilterQuery);
+    filterInput.classList.toggle("hidden", !showFilter);
+    if (!showFilter && filterInput.value) {
+      filterInput.value = "";
+      categoryFilterQuery = "";
+    }
+  }
+
+  const q = categoryFilterQuery.trim().toLowerCase();
+  const visibleCategories = q
+    ? allCategories.filter((c) => String(c).toLowerCase().includes(q))
+    : allCategories;
+
+  container.innerHTML = "";
+  branchUiByPath.clear();
+  const roots = buildCategoryTree(visibleCategories);
+  updateCollapseAllButton(roots);
+
+  if (!roots.length) {
+    const empty = document.createElement("div");
+    empty.className = "category-tree-empty";
+    empty.textContent = q ? `No labels match "${categoryFilterQuery.trim()}".` : "No categories configured yet.";
+    container.appendChild(empty);
+  } else {
+    let pendingFocusInput = null;
+    roots.forEach((root) => {
+      const { branch, focusInput } = renderTreeNode(root, 0);
+      container.appendChild(branch);
+      if (focusInput) pendingFocusInput = focusInput;
+    });
+    if (pendingFocusInput) {
+      requestAnimationFrame(() => pendingFocusInput.focus?.());
+    }
+  }
+
+  const ruleTargetSel = $("#rule-target-select");
+  if (ruleTargetSel) {
+    ruleTargetSel.innerHTML = buildCategoryOptions(ruleTargetSel.value || (allCategories[0] || "Other"));
+  }
+}
+
+function addCategoryFromInput() {
+  const inp = $("#new-category-input");
+  if (!inp) return;
+  addCategoryPath(inp.value);
   inp.value = "";
 }
 
 export function initTaxonomySettingsListeners() {
-  $("#add-rule-toggle-btn")?.addEventListener("click", () => {
-    const form = $("#add-rule-form");
-    if (!form) return;
-    form.classList.toggle("hidden");
-    const targetSel = $("#rule-target-select");
-    if (targetSel) {
-      targetSel.innerHTML = buildCategoryOptions(targetSel.value || (state.settings?.categories?.[0] || "Other"));
-    }
+  $("#toggle-all-categories-btn")?.addEventListener("click", () => {
+    const roots = buildCategoryTree(state.settings?.categories || []);
+    const parentPaths = collectParentPaths(roots);
+    const shouldExpand = $("#toggle-all-categories-btn")?.dataset.mode === "expand";
+    parentPaths.forEach((p) => setBranchCollapsedState(p, !shouldExpand));
+    updateCollapseAllButton(roots);
   });
-  $("#rule-cancel-btn")?.addEventListener("click", () => {
-    $("#add-rule-form")?.classList.add("hidden");
+
+  $("#category-filter-input")?.addEventListener("input", (e) => {
+    categoryFilterQuery = e.target.value || "";
+    renderCategoryTree(state.settings?.categories || []);
   });
-  $("#rule-save-btn")?.addEventListener("click", async () => {
-    const kwRaw = ($("#rule-keywords-input")?.value || "").trim();
-    const instr = ($("#rule-instruction-input")?.value || "").trim();
-    const target = $("#rule-target-select")?.value || "Other";
-    const matchKeywords = kwRaw ? kwRaw.split(",").map((s) => s.trim()).filter(Boolean) : [];
-    if (!matchKeywords.length && !instr) {
-      toast("Enter match keywords or an AI description.", true);
-      return;
-    }
-    try {
-      const res = await api("/api/rules", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          match_keywords: matchKeywords,
-          instruction: instr,
-          target_label: target,
-          enabled: true,
-        }),
-      });
-      state.settings.filing_rules = res.rules || [];
-      if ($("#rule-keywords-input")) $("#rule-keywords-input").value = "";
-      if ($("#rule-instruction-input")) $("#rule-instruction-input").value = "";
-      $("#add-rule-form")?.classList.add("hidden");
-      renderFilingRules(state.settings.filing_rules);
-      toast("Filing rule saved");
-    } catch (err) {
-      toast(err.message, true);
-    }
-  });
+
+  initFilingRuleListeners();
 
   $("#add-category-btn").addEventListener("click", addCategoryFromInput);
   $("#new-category-input").addEventListener("keydown", (e) => {

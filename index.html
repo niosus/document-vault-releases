@@ -11,16 +11,16 @@
   <meta name="releases-json" content="./latest.json" />
   <meta name="releases-json-fallback" content="https://document-vault.app/latest.json" />
   <meta name="releases-repo" content="niosus/document-vault-releases" />
-  <meta name="polar-checkout-starter" content="" />
-  <meta name="polar-checkout-personal" content="" />
+  <meta name="polar-checkout-starter" content="https://buy.polar.sh/polar_cl_tbcltdpIZZjy7Y4YuTTmVdbN0fo5l79zV8p5Q3FvSBp" />
+  <meta name="polar-checkout-personal" content="https://buy.polar.sh/polar_cl_eE7KcQNeQ4bwthvZB6Ndd4IztUixIP4whngo42Mi98d" />
   <meta name="business-contact-email" content="hello@document-vault.app" />
   <link rel="canonical" href="https://document-vault.app/" />
 
   <link rel="icon" type="image/png" sizes="32x32" href="./assets/favicon-32x32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="./assets/favicon-16x16.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="./assets/apple-touch-icon.png" />
-  <meta name="theme-color" content="#f4f7fc" media="(prefers-color-scheme: light)" />
-  <meta name="theme-color" content="#090e1a" media="(prefers-color-scheme: dark)" />
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#0b0d11" media="(prefers-color-scheme: dark)" />
 
   <script>
     (() => {
@@ -45,23 +45,35 @@
   <header class="site-header">
     <div class="container nav-inner">
       <a class="nav-brand" href="#">
-        <img src="./assets/app-icon.png" alt="Document Vault icon" width="34" height="34" />
+        <img src="./assets/app-icon.png" alt="Document Vault icon" width="28" height="28" />
         <span>Document Vault</span>
       </a>
 
       <nav class="nav-links" aria-label="Primary navigation">
         <a href="#features">Features</a>
-        <a href="#how-it-works">How It Works</a>
-        <a href="#privacy">Privacy</a>
         <a href="#pricing">Pricing</a>
         <a href="#releases">Releases</a>
       </nav>
 
       <div class="nav-actions">
         <div class="theme-controls" role="group" aria-label="Theme selection">
-          <button id="theme-light-btn" class="theme-opt-btn" type="button" title="Light theme" aria-pressed="false">Light</button>
-          <button id="theme-dark-btn" class="theme-opt-btn" type="button" title="Dark theme" aria-pressed="false">Dark</button>
-          <button id="theme-auto-btn" class="theme-opt-btn" type="button" title="System theme" aria-pressed="true">Auto</button>
+          <button id="theme-light-btn" class="theme-opt-btn" type="button" title="Light theme" aria-label="Light theme" aria-pressed="false">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="4"></circle>
+              <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
+            </svg>
+          </button>
+          <button id="theme-dark-btn" class="theme-opt-btn" type="button" title="Dark theme" aria-label="Dark theme" aria-pressed="false">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+            </svg>
+          </button>
+          <button id="theme-auto-btn" class="theme-opt-btn" type="button" title="System theme" aria-label="System theme" aria-pressed="true">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="2" y="3" width="20" height="14" rx="2"></rect>
+              <path d="M8 21h8M12 17v4"></path>
+            </svg>
+          </button>
         </div>
         <a class="btn btn-primary btn-sm" href="#download-panel">Download</a>
       </div>
@@ -72,20 +84,12 @@
     <section class="hero">
       <div class="container">
         <div class="hero-top">
-          <div class="eyebrow">
-            <span class="eyebrow-dot" aria-hidden="true"></span>
-            <span>Native macOS Menu-Bar App · Apple Silicon · 100% On-Device AI</span>
-          </div>
+          <p class="hero-kicker">Apple Silicon macOS · On-Device MLX Vision</p>
 
-          <h1>
-            Turn messy scans into an
-            <span class="gradient-text">organized Finder vault</span>.
-          </h1>
+          <h1>Turn messy scans into an organized Finder vault.</h1>
 
           <p class="hero-subtitle">
-            Document Vault reads PDFs and photos locally with Apple Silicon MLX Vision, extracts dates,
-            categories, and clean titles, and files them straight into your own Finder folders.
-            Zero cloud uploads. Zero lock-in.
+            Reads PDFs and photos locally on your Mac, extracts dates and clean titles, and files them straight into your own Finder folders.
           </p>
 
           <div id="download-panel" class="download-panel">
@@ -96,7 +100,7 @@
                 href="#releases"
                 aria-disabled="true"
               >
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                   <path d="M12 3v12"></path>
                   <path d="m7 10 5 5 5-5"></path>
                   <path d="M4 20h16"></path>
@@ -110,7 +114,7 @@
                 class="btn btn-secondary btn-lg hidden"
                 href="#releases"
               >
-                <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                   <path d="M12 3v12"></path>
                   <path d="m7 10 5 5 5-5"></path>
                   <path d="M4 20h16"></path>
@@ -132,33 +136,23 @@
                 aria-expanded="false"
                 aria-controls="gatekeeper-body"
               >
-                <span>Unsigned Preview Build — First-launch macOS instructions</span>
+                <span>Unsigned preview build — first-launch macOS instructions</span>
                 <span id="gatekeeper-chevron" aria-hidden="true">▾</span>
               </button>
               <div id="gatekeeper-body" class="gatekeeper-body hidden">
-                <strong>Opening an unsigned preview build for the first time:</strong>
                 <ol>
                   <li>Open the downloaded <code>.dmg</code> and drag <strong>Document Vault.app</strong> into <strong>Applications</strong>.</li>
                   <li>Launch <strong>Document Vault.app</strong> once — when macOS shows <em>"Document Vault Not Opened"</em>, click <strong>Done</strong>.</li>
-                  <li>Open <strong>System Settings → Privacy &amp; Security</strong>, scroll to <em>Security</em>, and click <strong>Open Anyway</strong>.</li>
+                  <li>Open <strong>System Settings → Privacy &amp; Security</strong> and click <strong>Open Anyway</strong>.</li>
                 </ol>
-                <div>Or in Terminal: <code>xattr -cr "/Applications/Document Vault.app"</code></div>
+                <div class="gatekeeper-cmd">Or via Terminal: <code>xattr -cr "/Applications/Document Vault.app"</code></div>
               </div>
             </div>
           </div>
 
-          <div class="hero-specs">
-            <span>macOS 14.0 Sonoma or newer</span>
-            <span>·</span>
-            <span>Apple Silicon (M1 – M4)</span>
-            <span>·</span>
-            <span>Local MLX Gemma 4 Vision</span>
-            <span>·</span>
-            <span>Automatic Sparkle Updates</span>
-          </div>
+          <p class="hero-specs">macOS 14+ · Apple Silicon · Zero cloud uploads</p>
         </div>
 
-        <!-- Interactive App Showcase (Real Document Vault UI + In-Browser Mock Server) -->
         <div class="showcase-wrap">
           <div id="app-window" class="app-window">
             <div class="win-chrome">
@@ -167,16 +161,13 @@
                 <span class="dot-yellow"></span>
                 <span class="dot-green"></span>
               </div>
-              <div class="win-title">
-                <span>Document Vault — Live Interactive App</span>
-                <span class="model-badge">In-Browser Demo · No LLM Download Needed</span>
-              </div>
+              <div class="win-title">Demo Document Vault</div>
               <div class="win-controls">
-                <button id="win-theme-btn" class="win-theme-btn" type="button" title="Toggle preview color scheme independently">
+                <button id="win-theme-btn" class="win-ctrl-btn" type="button" title="Toggle preview color scheme independently">
                   Preview: Light
                 </button>
-                <button id="win-reset-btn" class="win-theme-btn" type="button" title="Reset demo documents and review queue">
-                  Reset Demo
+                <button id="win-reset-btn" class="win-ctrl-btn" type="button" title="Reset demo documents and simulated scans">
+                  Reset
                 </button>
               </div>
             </div>
@@ -189,17 +180,6 @@
                 loading="lazy"
               ></iframe>
             </div>
-
-            <div class="demo-hint-bar">
-              <span>Try it live:</span>
-              <span>Click any document to preview or rotate</span>
-              <span>·</span>
-              <span>Check <strong>Activity &amp; Review (1)</strong></span>
-              <span>·</span>
-              <span>Drop any PDF/image file onto the window</span>
-              <span>·</span>
-              <span>Explore <strong>Settings</strong> mask builders</span>
-            </div>
           </div>
         </div>
       </div>
@@ -208,255 +188,144 @@
     <section id="features" class="section">
       <div class="container">
         <div class="section-header">
-          <div class="section-kicker">Built for Paperwork Reality</div>
-          <h2>Everything a local document vault should be</h2>
+          <p class="section-kicker">Capabilities</p>
+          <h2>Fast local AI. Plain Finder folders.</h2>
           <p>
             No proprietary database traps, no cloud OCR queues, and no per-page subscriptions.
-            Just fast Apple Silicon AI working directly with your files.
           </p>
         </div>
 
-        <div class="bento-grid">
-          <article class="feature-card">
-            <div class="feature-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="4" y="4" width="16" height="16" rx="3"></rect>
-                <path d="M9 9h6v6H9z"></path>
+        <div class="capabilities-grid">
+          <article class="capability-cell">
+            <div class="capability-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="4" y="4" width="16" height="16" rx="2"></rect>
+                <rect x="9" y="9" width="6" height="6"></rect>
                 <path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"></path>
               </svg>
             </div>
-            <h3>On-Device MLX Vision AI</h3>
+            <h3>On-Device MLX Vision</h3>
             <p>
-              Choose from Gemma 4 models (E2B to 26B-A4B MoE) tuned to your Mac's RAM. Download in
-              one click, and let idle TTL unloading free unified memory when you're done.
+              Run Gemma 4 models (E2B to 26B-A4B) tuned to your Mac's memory, with automatic idle unloading when you're done.
             </p>
           </article>
 
-          <article class="feature-card">
-            <div class="feature-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <article class="capability-cell">
+            <div class="capability-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
               </svg>
             </div>
-            <h3>Disk-First Vault, Zero Lock-In</h3>
+            <h3>Disk-First Finder Archive</h3>
             <p>
-              Your Finder folders are the single source of truth—non-year folders act as labels and
-              4-digit folders power Year filters. Stop using the app anytime and keep a spotless archive.
+              Your Finder folders are the single source of truth — non-year folders act as labels and 4-digit folders power Year filters.
             </p>
           </article>
 
-          <article class="feature-card">
-            <div class="feature-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <article class="capability-cell">
+            <div class="capability-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                 <polyline points="17 8 12 3 7 8"></polyline>
                 <line x1="12" y1="3" x2="12" y2="15"></line>
               </svg>
             </div>
-            <h3>Drag-Drop &amp; Folder Watcher</h3>
+            <h3>Drop &amp; Folder Watcher</h3>
             <p>
-              Drop PDFs, PNGs, or JPEGs anywhere on the window, or point the background Watcher at
-              your scanner's Incoming folder so new pages file themselves automatically.
+              Drop PDFs or photos onto the window, or watch your scanner's Incoming folder with auto-rotation and a Review Queue.
             </p>
           </article>
 
-          <article class="feature-card">
-            <div class="feature-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 12a9 9 0 1 1-3-6.7L21 8"></path>
-                <path d="M21 3v5h-5"></path>
-              </svg>
-            </div>
-            <h3>Auto-Rotate &amp; Review Queue</h3>
-            <p>
-              Sideways scans are straightened automatically, and low-confidence or duplicate files
-              pause in your Review Queue so you always have the final say before moving files.
-            </p>
-          </article>
-
-          <article class="feature-card">
-            <div class="feature-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 20h9"></path>
-                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
-              </svg>
-            </div>
-            <h3>Custom Masks &amp; Multi-Vault</h3>
-            <p>
-              Customize folder tree masks, filename templates, date formats, and title language—and
-              switch effortlessly between personal, family, or business vaults.
-            </p>
-          </article>
-
-          <article class="feature-card">
-            <div class="feature-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <article class="capability-cell">
+            <div class="capability-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="11" cy="11" r="8"></circle>
                 <path d="m21 21-4.3-4.3"></path>
               </svg>
             </div>
-            <h3>Instant Search &amp; Previews</h3>
+            <h3>Instant Search &amp; Custom Masks</h3>
             <p>
-              Backed by a fast local SQLite index and cached page thumbnails, Document Vault lets you
-              filter, preview, rotate, rename, or reclassify thousands of documents in milliseconds.
+              Filter and preview thousands of pages in milliseconds via local SQLite, with custom path templates and multi-vault support.
             </p>
           </article>
         </div>
-      </div>
-    </section>
 
-    <section id="how-it-works" class="section">
-      <div class="container">
-        <div class="section-header">
-          <div class="section-kicker">Workflow</div>
-          <h2>From messy inbox to calm archive in seconds</h2>
-          <p>Lives quietly in your macOS menu bar and opens cleanly in your browser whenever you need it.</p>
-        </div>
-
-        <div class="steps-grid">
-          <div class="step-card">
-            <div class="step-num">1</div>
-            <h3>Drop or Watch</h3>
-            <p>
-              Drop PDFs or scanned photos into the browser, or let your flatbed/mobile scanner save into
-              a watched Incoming folder.
-            </p>
-          </div>
-
-          <div class="step-card">
-            <div class="step-num">2</div>
-            <h3>Local Vision Reads &amp; Names</h3>
-            <p>
-              The MLX Vision model reads page 1 locally, infers the issue date, matches your categories,
-              and generates a clean human-readable title.
-            </p>
-          </div>
-
-          <div class="step-card">
-            <div class="step-num">3</div>
-            <h3>Filed on Disk &amp; Searchable</h3>
-            <p>
-              High-confidence documents file straight into your Vault folder hierarchy; uncertain ones wait
-              in Review. Every file stays readable in Finder forever.
-            </p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section id="privacy" class="section">
-      <div class="container">
-        <div class="section-header">
-          <div class="section-kicker">Privacy &amp; Ownership</div>
-          <h2>Your tax returns and medical bills belong on your Mac</h2>
-          <p>Designed from day one so sensitive paperwork never leaves your hardware.</p>
-        </div>
-
-        <div class="compare-grid">
-          <div class="compare-card is-ours">
-            <h3>
-              <span>Document Vault</span>
-              <span class="compare-pill">100% Local</span>
-            </h3>
-            <ul class="compare-list">
-              <li><span class="mark-good">✓</span><span>0 bytes of your documents ever leave your Mac</span></li>
-              <li><span class="mark-good">✓</span><span>Works completely offline — even on a flight</span></li>
-              <li><span class="mark-good">✓</span><span>Standard Finder folders &amp; PDFs with portable metadata sidecars</span></li>
-              <li><span class="mark-good">✓</span><span>No cloud OCR queues, API keys, or monthly token bills</span></li>
-              <li><span class="mark-good">✓</span><span>Self-contained Apple Silicon app — no Homebrew or Python setup</span></li>
-            </ul>
-          </div>
-
-          <div class="compare-card">
-            <h3>
-              <span>Typical Cloud Document Apps</span>
-              <span class="compare-pill">Cloud-Bound</span>
-            </h3>
-            <ul class="compare-list">
-              <li><span class="mark-muted">✕</span><span>Uploads sensitive financial and medical scans to third-party servers</span></li>
-              <li><span class="mark-muted">✕</span><span>Requires an internet connection and vendor account to process files</span></li>
-              <li><span class="mark-muted">✕</span><span>Locks documents inside proprietary databases or opaque UUID folders</span></li>
-              <li><span class="mark-muted">✕</span><span>Charges recurring subscriptions or per-page AI processing fees</span></li>
-              <li><span class="mark-muted">✕</span><span>Leaves your files disorganized if you ever cancel</span></li>
-            </ul>
-          </div>
+        <div class="privacy-strip" aria-label="Privacy guarantees">
+          <span><span class="mark-good">✓</span> 0 bytes leave your Mac</span>
+          <span class="strip-sep" aria-hidden="true">·</span>
+          <span><span class="mark-good">✓</span> Works 100% offline</span>
+          <span class="strip-sep" aria-hidden="true">·</span>
+          <span><span class="mark-good">✓</span> Standard Finder folders &amp; sidecars</span>
         </div>
       </div>
     </section>
 
     <section id="pricing" class="section">
       <div class="container">
-        <div class="section-header">
-          <div class="section-kicker">Simple One-Time Pricing</div>
-          <h2>Try free up to 30 documents. Buy once, own it forever.</h2>
-          <p>
-            No recurring subscriptions or per-page fees. Existing Finder browsing stays free forever,
-            and deleting a processed document from your vault frees its slot.
-          </p>
-        </div>
-
-        <div class="pricing-toolbar">
-          <span class="pricing-currency-hint">Regional currency display (Polar detects local currency &amp; VAT at checkout):</span>
-          <div id="pricing-currency-switch" class="pricing-currency-switch" role="group" aria-label="Pricing currency">
-            <button type="button" class="currency-opt-btn is-active" data-currency="USD" aria-pressed="true">$ USD</button>
-            <button type="button" class="currency-opt-btn" data-currency="EUR" aria-pressed="false">€ EUR</button>
-            <button type="button" class="currency-opt-btn" data-currency="CHF" aria-pressed="false">CHF</button>
+        <div class="section-header-row">
+          <div class="section-header">
+            <p class="section-kicker">Pricing</p>
+            <h2>Buy once, own it forever.</h2>
+            <p>
+              Try free up to 30 AI-processed docs. Pre-existing Finder files stay unlimited, and deleting a doc frees its slot.
+            </p>
           </div>
         </div>
+
+        <p class="pricing-currency-hint">Prices shown in your local currency (Polar detects local currency &amp; VAT at checkout).</p>
 
         <div class="pricing-grid">
           <article class="pricing-card">
             <div class="pricing-card-head">
               <h3>Free</h3>
-              <span class="pricing-badge">Trial</span>
+              <span class="pricing-meta-tag">Trial</span>
             </div>
             <div class="pricing-price">
               <span id="price-free" class="pricing-amount" data-amount="0">$0</span>
-              <span class="pricing-billing">Up to 30 processed docs</span>
+              <span class="pricing-billing">Up to 30 docs</span>
             </div>
-            <p class="pricing-desc">Full local MLX Vision filing in your active vault — no credit card needed.</p>
+            <p class="pricing-desc">Full local MLX Vision filing — no card required.</p>
             <ul class="pricing-features">
-              <li><span class="mark-good">✓</span><span>Up to 30 AI-processed docs per active vault</span></li>
-              <li><span class="mark-good">✓</span><span>Deleting a doc frees its quota slot</span></li>
-              <li><span class="mark-good">✓</span><span>Pre-existing Finder files stay unlimited</span></li>
+              <li>Up to 30 AI-processed docs</li>
+              <li>Deleting a doc frees its slot</li>
+              <li>Existing Finder files unlimited</li>
             </ul>
-            <a class="btn btn-secondary pricing-cta" href="#download-panel">Download Free (.dmg)</a>
+            <a class="btn btn-secondary pricing-cta" href="#download-panel">Download Free</a>
           </article>
 
           <article class="pricing-card">
             <div class="pricing-card-head">
               <h3>Starter</h3>
-              <span class="pricing-badge">1 Mac</span>
+              <span class="pricing-meta-tag">1 Mac</span>
             </div>
             <div class="pricing-price">
               <span id="price-starter" class="pricing-amount" data-amount="19">$19</span>
               <span class="pricing-billing">One-time · 1 seat</span>
             </div>
-            <p class="pricing-desc">Everything you need to automate your personal paperless archive on one Mac.</p>
+            <p class="pricing-desc">Unlimited paperless filing on one Mac.</p>
             <ul class="pricing-features">
-              <li><span class="mark-good">✓</span><span>Unlimited AI-processed documents</span></li>
-              <li><span class="mark-good">✓</span><span>1 Mac activation (transferable)</span></li>
-              <li><span class="mark-good">✓</span><span>Works 100% offline after activation</span></li>
-              <li><span class="mark-good">✓</span><span>All v1.x Sparkle updates included</span></li>
+              <li>Unlimited AI-processed docs</li>
+              <li>1 transferable Mac activation</li>
+              <li>All v1.x Sparkle updates</li>
             </ul>
             <a id="btn-buy-starter" class="btn btn-secondary pricing-cta" href="#pricing" data-plan="starter">Buy Starter</a>
           </article>
 
           <article class="pricing-card is-popular">
+            <span class="pricing-popular-pill">Most Popular</span>
             <div class="pricing-card-head">
               <h3>Personal</h3>
-              <span class="pricing-badge is-popular">Most Popular</span>
+              <span class="pricing-meta-tag">3 Macs</span>
             </div>
             <div class="pricing-price">
               <span id="price-personal" class="pricing-amount" data-amount="29">$29</span>
               <span class="pricing-billing">One-time · 3 seats</span>
             </div>
-            <p class="pricing-desc">For your desktop + MacBook + backup Mac, or sharing across personal devices.</p>
+            <p class="pricing-desc">Desktop, MacBook, and backup Mac covered.</p>
             <ul class="pricing-features">
-              <li><span class="mark-good">✓</span><span>Unlimited AI-processed documents</span></li>
-              <li><span class="mark-good">✓</span><span>Up to 3 Mac activations</span></li>
-              <li><span class="mark-good">✓</span><span>Deactivate &amp; move seats anytime</span></li>
-              <li><span class="mark-good">✓</span><span>All v1.x Sparkle updates included</span></li>
+              <li>Unlimited AI-processed docs</li>
+              <li>Up to 3 Mac activations</li>
+              <li>Move seats &amp; all v1.x updates</li>
             </ul>
             <a id="btn-buy-personal" class="btn btn-primary pricing-cta" href="#pricing" data-plan="personal">Buy Personal</a>
           </article>
@@ -464,17 +333,17 @@
           <article class="pricing-card">
             <div class="pricing-card-head">
               <h3>Business</h3>
-              <span class="pricing-badge">5+ Macs</span>
+              <span class="pricing-meta-tag">5+ Macs</span>
             </div>
             <div class="pricing-price">
               <span class="pricing-amount">Custom</span>
-              <span class="pricing-billing">Teams &amp; invoicing</span>
+              <span class="pricing-billing">Teams &amp; POs</span>
             </div>
-            <p class="pricing-desc">Multi-seat deployment, shared office vaults, or custom procurement paperwork.</p>
+            <p class="pricing-desc">Shared office vaults and team procurement.</p>
             <ul class="pricing-features">
-              <li><span class="mark-good">✓</span><span>5+ Mac seats for teams &amp; practices</span></li>
-              <li><span class="mark-good">✓</span><span>Custom VAT invoicing &amp; PO support</span></li>
-              <li><span class="mark-good">✓</span><span>Direct founder onboarding support</span></li>
+              <li>5+ seats for teams &amp; practices</li>
+              <li>Custom VAT invoicing &amp; POs</li>
+              <li>Direct founder onboarding</li>
             </ul>
             <a id="btn-contact-business" class="btn btn-secondary pricing-cta" href="mailto:hello@document-vault.app?subject=Document%20Vault%20Business%20License">Contact Us</a>
           </article>
@@ -484,12 +353,17 @@
       </div>
     </section>
 
-    <section id="releases" class="section">
+    <section id="releases" class="section section-releases">
       <div class="container">
-        <div class="section-header">
-          <div class="section-kicker">Downloads &amp; Changelog</div>
-          <h2>Latest Releases</h2>
-          <p>Always up to date from the official release feed.</p>
+        <div class="section-header-row">
+          <div class="section-header">
+            <p class="section-kicker">Changelog</p>
+            <h2>Releases</h2>
+          </div>
+          <div class="releases-links">
+            <a id="all-releases-link" href="https://github.com/niosus/document-vault-releases/releases" target="_blank" rel="noopener">GitHub Releases →</a>
+            <a id="appcast-link" href="https://document-vault.app/appcast.xml" target="_blank" rel="noopener">Appcast</a>
+          </div>
         </div>
 
         <div class="releases-card">
@@ -497,11 +371,7 @@
             <div class="release-tabs" role="tablist" aria-label="Release channel">
               <button class="release-tab is-active" type="button" data-release-tab="latest" role="tab" aria-selected="true">Latest Release</button>
               <button class="release-tab" type="button" data-release-tab="prerelease" role="tab" aria-selected="false">Pre-release</button>
-              <button class="release-tab" type="button" data-release-tab="history" role="tab" aria-selected="false">Recent History</button>
-            </div>
-            <div class="releases-links">
-              <a id="all-releases-link" href="https://github.com/niosus/document-vault-releases/releases" target="_blank" rel="noopener">All GitHub Releases →</a>
-              <a id="appcast-link" href="https://document-vault.app/appcast.xml" target="_blank" rel="noopener">Sparkle Appcast</a>
+              <button class="release-tab" type="button" data-release-tab="history" role="tab" aria-selected="false">History</button>
             </div>
           </div>
 
@@ -511,46 +381,17 @@
         </div>
       </div>
     </section>
-
-    <section class="section">
-      <div class="container">
-        <div class="bottom-cta">
-          <h2>Ready for a calmer paperless archive?</h2>
-          <p>
-            Download Document Vault for Apple Silicon macOS and turn years of loose scans into a
-            clean Finder vault in minutes.
-          </p>
-          <div class="download-actions">
-            <a
-              id="btn-bottom-primary"
-              class="btn btn-primary btn-lg is-disabled"
-              href="#releases"
-              aria-disabled="true"
-            >
-              <span id="btn-bottom-primary-label">Stable Release Coming Soon</span>
-            </a>
-            <a
-              id="btn-bottom-prerelease"
-              class="btn btn-secondary btn-lg hidden"
-              href="#releases"
-            >
-              <span id="btn-bottom-prerelease-label">Download Pre-release</span>
-            </a>
-          </div>
-        </div>
-      </div>
-    </section>
   </main>
 
   <footer class="site-footer">
     <div class="container footer-inner">
-      <div>Document Vault · Local MLX Vision Document Organizer for Apple Silicon</div>
+      <div>Document Vault · Local AI Document Organizer for macOS</div>
       <div class="footer-links">
         <a href="#features">Features</a>
-        <a href="#privacy">Privacy</a>
         <a href="#pricing">Pricing</a>
+        <a href="#releases">Releases</a>
         <a id="footer-support-link" href="mailto:support@document-vault.app?subject=Document%20Vault%20Support">Support</a>
-        <a id="footer-releases-link" href="https://github.com/niosus/document-vault-releases/releases" target="_blank" rel="noopener">GitHub Releases</a>
+        <a id="footer-releases-link" href="https://github.com/niosus/document-vault-releases/releases" target="_blank" rel="noopener">GitHub</a>
         <a id="footer-appcast-link" href="https://document-vault.app/appcast.xml" target="_blank" rel="noopener">appcast.xml</a>
       </div>
     </div>

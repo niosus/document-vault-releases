@@ -1,4 +1,6 @@
 .topbar {
+  position: relative;
+  z-index: 42;
   background: var(--surface-glass);
   backdrop-filter: blur(18px) saturate(1.5);
   -webkit-backdrop-filter: blur(18px) saturate(1.5);
@@ -9,6 +11,10 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+}
+
+.topbar:has(.vlm-popover:not(.hidden)) {
+  z-index: 46;
 }
 
 .brand {

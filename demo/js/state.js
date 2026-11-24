@@ -26,7 +26,6 @@ export const state = {
   vaultOpenPendingAnimation: true,
   latestHealth: null,
   license: null,
-  selectedCurrency: null,
   lastWatcherLicenseBlocked: false,
   vlmPopoverOpen: false,
   vlmBannerDismissed: false,

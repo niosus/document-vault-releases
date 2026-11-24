@@ -403,10 +403,6 @@ export function initVaultListeners() {
       return;
     }
 
-    if (e.target.closest(".vault-thumb") || e.target.closest(".btn-preview-doc")) {
-      openFullFilePreview(`/api/documents/${doc.id}/file`, doc.title, doc.vault_rel_path, { docId: doc.id });
-      return;
-    }
     if (e.target.closest(".btn-doc-suggestion")) {
       const sug = e.target.closest(".btn-doc-suggestion").dataset.suggested || doc.suggested_new_label;
       if (sug) openBundleInspectorModal(sug);
@@ -428,7 +424,20 @@ export function initVaultListeners() {
     }
     if (e.target.closest(".btn-delete-doc")) {
       openDeleteConfirmModal(doc);
+      return;
     }
+    if (e.target.closest(".btn-preview-doc")) {
+      openFullFilePreview(`/api/documents/${doc.id}/file`, doc.title, doc.vault_rel_path, { docId: doc.id });
+      return;
+    }
+    if (e.target.closest("button, a, input, label, select, textarea")) {
+      return;
+    }
+    if (typeof window !== "undefined" && typeof window.getSelection === "function") {
+      const sel = window.getSelection();
+      if (sel && String(sel).trim()) return;
+    }
+    openFullFilePreview(`/api/documents/${doc.id}/file`, doc.title, doc.vault_rel_path, { docId: doc.id });
   });
 
   if ("IntersectionObserver" in window && $("#vault-scroll-sentinel")) {

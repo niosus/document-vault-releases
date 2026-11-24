@@ -1,5 +1,6 @@
 /** Filed document inspect/edit/reclassify modal and single-document delete confirmation modal. */
 
+import { openBatchReclassifyModal } from "./batch_modals.js";
 import { closeLicenseModal } from "./license.js";
 import { closeAnimatedModal, setModalCompact, showAnimatedModal } from "./modals.js";
 import { animatePageRotation, buildRotateButtonsHtml, rotateVaultDocumentPage } from "./page_rotation.js";
@@ -12,8 +13,6 @@ import {
   extractRuleClue,
   formatLabelDisplay,
   getPreviewPageNumber,
-  handleActionError,
-  isLicenseRequiredError,
   renderReliabilityTag,
   toast,
 } from "./utils.js";
@@ -122,7 +121,6 @@ export function openDocModal(doc) {
                </div>`
             : ""
         }
-        <div id="modal-reclassify-result" class="reclassify-ai-box hidden"></div>
         <div class="form-grid-3">
           <label class="field">
             <span>Date</span>
@@ -330,64 +328,11 @@ export function openDocModal(doc) {
     refreshModalTargetPath();
   }
 
-  $("#modal-reclassify-btn").addEventListener("click", async () => {
-    const btn = $("#modal-reclassify-btn");
-    const prevLabel = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = "Reclassifying…";
-    try {
-      const res = await api(`/api/documents/${doc.id}/reclassify`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ apply: false }),
-      });
-      const sug = res.suggestion || {};
-      const suggestedNew = sug.suggested_new_category;
-      const chosenCat = suggestedNew || sug.category || doc.category;
-      const relTagHtml = renderReliabilityTag({
-        reliability_status: sug.reliability?.status,
-        reliability_reasons: sug.reliability?.reasons,
-        confidence: sug.confidence,
-      });
-
-      $("#modal-cat").innerHTML = buildCategoryOptions(chosenCat, suggestedNew);
-      $("#modal-cat").value = chosenCat;
-      if (sug.date !== undefined) $("#modal-date").value = sug.date || "";
-      if (sug.title) $("#modal-title-input").value = sug.title;
-
-      syncModalAddCatRow();
-
-      const box = $("#modal-reclassify-result");
-      box.classList.remove("hidden");
-      box.innerHTML = `
-        <div class="reclassify-ai-head">
-          <strong>AI Classification Suggestion</strong>
-          <div class="tag-row">
-            ${relTagHtml}
-            ${suggestedNew ? `<span class="tag tag-info">Suggested New Label: ${esc(formatLabelDisplay(suggestedNew))}</span>` : ""}
-          </div>
-        </div>
-        ${sug.reason ? `<div class="muted">${esc(sug.reason)}</div>` : ""}
-        ${
-          sug.thinking
-            ? `<details class="thinking-details">
-                 <summary>Model Thinking</summary>
-                 <pre class="thinking-box">${esc(sug.thinking)}</pre>
-               </details>`
-            : ""
-        }
-      `;
-      await refreshModalTargetPath();
-      toast("AI suggestion ready — review and click Save & Relocate Copy");
-    } catch (err) {
-      if (isLicenseRequiredError(err)) {
-        closeAnimatedModal($("#doc-modal"));
-      }
-      handleActionError(err);
-    } finally {
-      btn.disabled = false;
-      btn.textContent = prevLabel;
-    }
+  $("#modal-reclassify-btn").addEventListener("click", () => {
+    openBatchReclassifyModal([doc], {
+      onBack: () => openDocModal(doc),
+      clearSelection: false,
+    });
   });
 
   $("#modal-preview-btn").addEventListener("click", () =>

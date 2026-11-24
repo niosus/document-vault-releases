@@ -1,15 +1,16 @@
 /* Document Vault stylesheet manifest (ordered cascade, zero bundler) */
 
-@import url("./css/tokens_base.css");
-@import url("./css/topbar_tabs.css");
-@import url("./css/viewer_cards.css");
-@import url("./css/queue_filters.css");
-@import url("./css/vault_grid.css");
-@import url("./css/review_activity.css");
-@import url("./css/settings.css");
-@import url("./css/modals_notifications.css");
-@import url("./css/dialogs_motion.css");
-@import url("./css/onboarding.css");
-@import url("./css/vlm_quickstart.css");
-@import url("./css/licensing.css");
-@import url("./css/taxonomy_rules.css");
+@import url("./css/tokens_base.css?v=20261123j");
+@import url("./css/topbar_tabs.css?v=20261123j");
+@import url("./css/viewer_cards.css?v=20261123j");
+@import url("./css/queue_filters.css?v=20261123j");
+@import url("./css/vault_grid.css?v=20261123j");
+@import url("./css/review_activity.css?v=20261123j");
+@import url("./css/settings.css?v=20261123j");
+@import url("./css/modals_notifications.css?v=20261123j");
+@import url("./css/dialogs_motion.css?v=20261123j");
+@import url("./css/onboarding.css?v=20261123j");
+@import url("./css/vlm_quickstart.css?v=20261123j");
+@import url("./css/licensing.css?v=20261123j");
+@import url("./css/category_tree.css?v=20261123j");
+@import url("./css/taxonomy_rules.css?v=20261123j");

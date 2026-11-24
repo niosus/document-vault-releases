@@ -501,8 +501,7 @@
 }
 
 .activity-kind-queued .activity-status-dot { background: var(--warn); }
-.activity-kind-error .activity-status-dot,
-.activity-kind-stopped .activity-status-dot { background: var(--danger); }
+.activity-kind-error .activity-status-dot { background: var(--danger); }
 
 .activity-event-file {
   font-weight: 600;

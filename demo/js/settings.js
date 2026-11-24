@@ -3,7 +3,8 @@
 import { closeAnimatedModal, setModalCompact, showAnimatedModal } from "./modals.js";
 import { renderMaskBuilders, renderMaskCanvas } from "./settings_masks.js";
 import { fetchVlmModels, updateModelSelectButtons } from "./settings_models.js";
-import { renderCategoryChips, renderFilingRules } from "./settings_taxonomy.js";
+import { renderFilingRules } from "./settings_rules.js";
+import { renderCategoryTree } from "./settings_taxonomy.js";
 import { $, state } from "./state.js";
 import { applyInvertDocsDark, getStoredInvertDocsDark } from "./theme.js";
 import { api, esc, toast } from "./utils.js";
@@ -57,6 +58,7 @@ export async function updateSettingsPathPreview() {
         tree_template: $("#set-tree-template").value,
         filename_mask: $("#set-filename-mask").value,
         date_format: $("#set-date-format").value,
+        title_separator: $("#set-title-separator")?.value || state.settings?.title_separator || "space",
       }),
     });
     $("#settings-path-preview").textContent = rel_path;
@@ -133,6 +135,9 @@ export async function loadSettingsIntoForm() {
   $("#set-tree-template").value = s.tree_template;
   $("#set-filename-mask").value = s.filename_mask;
   $("#set-date-format").value = s.date_format || "YYYY-MM-DD";
+  if ($("#set-title-separator")) {
+    $("#set-title-separator").value = s.title_separator || "space";
+  }
   $("#set-thinking-mode").value = s.thinking_mode || "off";
   $("#set-threshold").value = s.confidence_threshold;
   $("#threshold-val").textContent = Number(s.confidence_threshold).toFixed(2);
@@ -145,7 +150,7 @@ export async function loadSettingsIntoForm() {
   }
   applyInvertDocsDark(getStoredInvertDocsDark());
 
-  renderCategoryChips([...s.categories]);
+  renderCategoryTree([...s.categories]);
   renderFilingRules([...(s.filing_rules || [])]);
   renderMaskBuilders();
   updatePromptPreviewAndBadge();
@@ -260,6 +265,7 @@ function collectSettingsPayload() {
       tree_template: treeTemplate,
       filename_mask: filenameMask,
       date_format: $("#set-date-format").value,
+      title_separator: $("#set-title-separator")?.value || state.settings?.title_separator || "space",
       vlm_model: $("#set-vlm-model").value,
       thinking_mode: $("#set-thinking-mode").value,
       confidence_threshold: Number($("#set-threshold").value),
@@ -366,6 +372,10 @@ export function initSettingsListeners() {
     scheduleDebouncedSettingsSave();
   });
   $("#set-date-format").addEventListener("change", () => {
+    updateSettingsPathPreview();
+    saveSettingsAuto();
+  });
+  $("#set-title-separator")?.addEventListener("change", () => {
     updateSettingsPathPreview();
     saveSettingsAuto();
   });

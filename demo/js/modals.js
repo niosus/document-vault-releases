@@ -103,3 +103,41 @@ export function createDebouncedCallback(fn, delayMs = 180) {
     timer = setTimeout(() => fn(...args), delayMs);
   };
 }
+
+export function openConfirmModal({
+  title = "Are you sure?",
+  bodyHtml = "",
+  confirmLabel = "Confirm",
+  confirmClass = "btn-danger",
+  onConfirm,
+}) {
+  const modal = $("#doc-modal");
+  if (!modal) return;
+  setModalCompact(true);
+  $("#modal-title").textContent = title;
+  $("#modal-body").innerHTML = `
+    <div class="reclass-modal-body">
+      ${bodyHtml}
+      <div class="modal-footer-actions">
+        <button id="confirm-modal-cancel" type="button" class="btn btn-secondary">Cancel</button>
+        <button id="confirm-modal-ok" type="button" class="btn ${esc(confirmClass)}">${esc(confirmLabel)}</button>
+      </div>
+    </div>
+  `;
+  $("#confirm-modal-cancel")?.addEventListener("click", () => closeAnimatedModal(modal));
+  $("#confirm-modal-ok")?.addEventListener("click", async () => {
+    const btn = $("#confirm-modal-ok");
+    if (btn) btn.disabled = true;
+    try {
+      const ok = onConfirm ? await onConfirm() : true;
+      if (ok !== false) {
+        closeAnimatedModal(modal);
+      } else if (btn) {
+        btn.disabled = false;
+      }
+    } catch {
+      if (btn) btn.disabled = false;
+    }
+  });
+  showAnimatedModal(modal);
+}

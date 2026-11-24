@@ -1,0 +1,45 @@
+/* Demo-only streamlining: show only the Vault Browser and simulated scans,
+   keeping every visible control 100% self-contained without altering app/static/. */
+
+/* Remove the tabs bar (Vault / Activity & Review / Settings + Click to browse) and secondary panels */
+.tabs-bar,
+#tab-review,
+#tab-settings {
+  display: none !important;
+}
+
+/* Trim desktop-only / duplicate topbar controls (theme switcher lives in the host frame) */
+#license-pill,
+#open-welcome-guide-btn,
+#theme-controls,
+.watcher-controls > .switch-label {
+  display: none !important;
+}
+
+/* Slightly tighter topbar & header spacing so documents sit above the fold */
+.topbar {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.panel-header > div > p.muted {
+  display: none !important;
+}
+
+/* Hide suggested-label strip in demo view to keep the card grid front and center */
+#vault-suggestions-strip {
+  display: none !important;
+}
+
+/* Remove links/actions pointing to unavailable endpoints or hidden tabs in static demo */
+[data-pop-action="settings"],
+#preview-open-tab-link,
+#preview-download-link,
+#batch-download-btn,
+[data-empty-action="open-settings"],
+[data-empty-action="open-incoming"],
+[data-empty-action="open-vault"],
+[data-empty-action="switch-vault"],
+[data-empty-action="dl-model"] {
+  display: none !important;
+}

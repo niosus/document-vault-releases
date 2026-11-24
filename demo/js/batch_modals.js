@@ -23,12 +23,14 @@ import { clearDocSelection, loadVaultDocuments } from "./vault_grid.js";
 import { ensureFastQueuePoll, refreshHealth } from "./vlm.js";
 import { renderWatcherTopbar } from "./watcher.js";
 
-export function openBatchReclassifyModal(selectedDocs) {
+export function openBatchReclassifyModal(selectedDocs, options = {}) {
   if (!selectedDocs.length) return;
   if (!state.settings?.vlm_model) {
     toast("Select a Vision Model in Settings first.", true);
     return;
   }
+  const { onBack = null, clearSelection = true } = options || {};
+  const hasBack = typeof onBack === "function";
   const modal = $("#doc-modal");
   setModalCompact(true);
   const categories = state.settings?.categories || [];
@@ -119,12 +121,16 @@ export function openBatchReclassifyModal(selectedDocs) {
       </details>
 
       <div class="modal-footer-actions">
+        ${hasBack ? `<button id="batch-reclass-back" type="button" class="btn btn-secondary">← Back</button>` : ""}
         <button id="batch-reclass-cancel" type="button" class="btn btn-secondary">Cancel</button>
         <button id="batch-reclass-submit" type="button" class="btn btn-primary">Reclassify ${docLabel}</button>
       </div>
     </div>
   `;
 
+  if (hasBack) {
+    $("#batch-reclass-back")?.addEventListener("click", () => onBack());
+  }
   $("#batch-reclass-cancel").addEventListener("click", () => closeAnimatedModal(modal));
   $("#batch-reclass-submit").addEventListener("click", async () => {
     const btn = $("#batch-reclass-submit");
@@ -143,7 +149,9 @@ export function openBatchReclassifyModal(selectedDocs) {
         }),
       });
       closeAnimatedModal(modal);
-      clearDocSelection();
+      if (clearSelection) {
+        clearDocSelection();
+      }
       state.queueExpanded = true;
       renderWatcherTopbar(res.watcher);
       ensureFastQueuePoll();

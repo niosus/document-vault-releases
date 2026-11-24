@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const APP_VERSION = "0.3.0";
+  const APP_VERSION = "0.3.8";
   const DEFAULT_CATEGORIES = [
     "Finance",
     "Taxes",
@@ -148,7 +148,7 @@
       dump_dir: "~/Downloads/ScansIncoming",
       processed_dir_name: "Processed",
       vlm_model: "mlx-community/gemma-4-e4b-it-4bit",
-      thinking_mode: "auto",
+      thinking_mode: "off",
       watcher_enabled: true,
       watcher_debounce_seconds: 2.0,
       categories: [...DEFAULT_CATEGORIES],
@@ -156,7 +156,8 @@
       tree_template: "{year}/{category}",
       filename_mask: "{date} - {title}",
       date_format: "YYYY-MM-DD",
-      title_language: "English",
+      title_separator: "space",
+      title_language: "english",
       confidence_threshold: 0.72,
       custom_instructions: "",
       system_prompt_override: "",
@@ -465,6 +466,8 @@
       activity,
       previewSpecs,
       nextId: 300,
+      scanIndex: 0,
+      pendingScanCount: 5,
       modelLoaded: true,
       downloadState: { status: "idle", model_id: "", percent: 0, message: "" },
       license: null,
@@ -482,13 +485,24 @@
     return parts.length ? parts.join("/") : fallback;
   }
 
+  function formatTitleToken(title, titleSeparator) {
+    const clean = String(title || "Untitled").replace(/[\\/:*?"<>|]/g, " ").replace(/\s+/g, " ").trim() || "Untitled";
+    if (titleSeparator === "underscore" || titleSeparator === "_") {
+      return clean.replace(/[\s_]+/g, "_");
+    }
+    if (titleSeparator === "hyphen" || titleSeparator === "-") {
+      return clean.replace(/[\s-]+/g, "-");
+    }
+    return clean;
+  }
+
   function formatPath(settings, dateStr, category, title, ext) {
     const cleanDate = String(dateStr || "").trim() || "Undated";
     const yearMatch = /^((?:19|20)\d{2})/.exec(cleanDate);
     const year = yearMatch ? yearMatch[1] : "Unknown Year";
     const cleanCatPath = normalizeLabelPath(category, "Other");
     const flatCat = cleanCatPath.replace(/\//g, " ");
-    const safeTitle = String(title || "Untitled").replace(/[\\/:*?"<>|]/g, " ").trim() || "Untitled";
+    const safeTitle = formatTitleToken(title, settings.title_separator || "space");
     const cleanExt = ext.startsWith(".") ? ext : `.${ext || "pdf"}`;
 
     let folder = String(settings.tree_template || "{year}/{category}")
@@ -646,7 +660,7 @@
       license_block_message: "",
       dump_dir: db.settings.dump_dir,
       vault_dir: db.settings.vault_dir,
-      pending_dump_files: 0,
+      pending_dump_files: db.pendingScanCount,
       scan_queue: [],
       activity: [...db.activity],
       pending_reviews: db.reviewItems.length,
@@ -1085,39 +1099,143 @@
       return jsonResponse(buildWatcherSnapshot());
     }
 
+  const DEMO_SIMULATED_SCANS = [
+    {
+      filename: "Scanner_Inbox_009.pdf",
+      doc_date: "2026-11-18",
+      category: "Medical",
+      title: "Dental Checkup & Hygiene Receipt",
+      spec: {
+        accent: "#14b8a6",
+        angle: 0,
+        issuer: "BrightSmile Dental Clinic",
+        subtitle: "Sample Local AI Scan",
+        docDate: "2026-11-18",
+        heading: "Dental Checkup & Hygiene Receipt",
+        lines: [
+          { label: "Routine Exam & X-Ray", value: "$110.00" },
+          { label: "Preventive Cleaning", value: "$95.00" },
+          { label: "Insurance Coverage", value: "-$160.00" },
+          { label: "Patient Copay", value: "$45.00" },
+        ],
+        total: true,
+      },
+    },
+    {
+      filename: "Scanner_Inbox_010.pdf",
+      doc_date: "2026-11-14",
+      category: "Housing/Utilities",
+      title: "Monthly Fiber Internet Bill",
+      spec: {
+        accent: "#6366f1",
+        angle: 0,
+        issuer: "Helvetia Fiber Net",
+        subtitle: "Monthly Connectivity Statement",
+        docDate: "2026-11-14",
+        heading: "Monthly Fiber Internet Bill",
+        lines: [
+          { label: "10 Gbps Fiber Plan", value: "$54.00" },
+          { label: "Router Lease", value: "$0.00" },
+          { label: "Tax & Regulatory Fee", value: "$4.30" },
+          { label: "Total Due", value: "$58.30" },
+        ],
+        total: true,
+      },
+    },
+    {
+      filename: "Scanner_Inbox_011.pdf",
+      doc_date: "2026-11-09",
+      category: "Insurance",
+      title: "Comprehensive Auto Policy Renewal",
+      spec: {
+        accent: "#d97706",
+        angle: 0,
+        issuer: "Alpine Auto Insurance",
+        subtitle: "Annual Policy Schedule",
+        docDate: "2026-11-09",
+        heading: "Comprehensive Auto Policy Renewal",
+        lines: [
+          { label: "Collision & Comprehensive", value: "$640.00" },
+          { label: "Roadside Assistance", value: "$48.00" },
+          { label: "Safe Driver Credit", value: "-$96.00" },
+          { label: "Annual Premium", value: "$592.00" },
+        ],
+        total: true,
+      },
+    },
+    {
+      filename: "Scanner_Inbox_012.pdf",
+      doc_date: "2026-11-02",
+      category: "Finance",
+      title: "High-Yield Savings Monthly Statement",
+      spec: {
+        accent: "#206bff",
+        angle: 0,
+        issuer: "Nordic Direct Bank",
+        subtitle: "Account Statement · Oct 2026",
+        docDate: "2026-11-02",
+        heading: "High-Yield Savings Monthly Statement",
+        lines: [
+          { label: "Opening Balance", value: "$24,180.00" },
+          { label: "Monthly Deposit", value: "+$1,250.00" },
+          { label: "Interest Earned (4.1% APY)", value: "+$84.60" },
+          { label: "Closing Balance", value: "$25,514.60" },
+        ],
+        total: true,
+      },
+    },
+    {
+      filename: "Scanner_Inbox_013.pdf",
+      doc_date: "2026-10-27",
+      category: "Travel",
+      title: "Annual Rail Travelcard Receipt",
+      spec: {
+        accent: "#0ea5e9",
+        angle: 0,
+        issuer: "SBB Rail Services",
+        subtitle: "Digital Ticket & Pass Receipt",
+        docDate: "2026-10-27",
+        heading: "Annual Rail Travelcard Receipt",
+        lines: [
+          { label: "Half-Fare Annual Pass", value: "$185.00" },
+          { label: "Loyalty Renewal Discount", value: "-$20.00" },
+          { label: "VAT Included", value: "$12.30" },
+          { label: "Total Paid", value: "$165.00" },
+        ],
+        total: true,
+      },
+    },
+  ];
+
     if ((path === "/api/watcher/scan" || path === "/api/onboarding/sample") && method === "POST") {
       const blocked = demoQuotaErrorResponse();
       if (blocked) return blocked;
-      const sampleName = path.endsWith("/sample") ? "Sample_Dental_Receipt.pdf" : "Scanner_Inbox_009.pdf";
+      const preset = DEMO_SIMULATED_SCANS[db.scanIndex % DEMO_SIMULATED_SCANS.length];
+      db.scanIndex += 1;
+      db.pendingScanCount = Math.max(0, db.pendingScanCount - 1);
+      const sampleName = path.endsWith("/sample") ? `Sample_${preset.filename}` : preset.filename;
       const doc = addNewDemoDocument({
         filename: sampleName,
         sourceMode: path.endsWith("/sample") ? "sample" : "watcher",
         customSpec: {
-          accent: "#14b8a6",
-          angle: 0,
-          issuer: "BrightSmile Dental Clinic",
-          subtitle: "Sample Local AI Scan",
-          docDate: "2026-11-18",
-          heading: "Dental Checkup & Hygiene Receipt",
+          ...preset.spec,
           ref: `Demo Scan · ${sampleName}`,
-          lines: [
-            { label: "Routine Exam & X-Ray", value: "$110.00" },
-            { label: "Preventive Cleaning", value: "$95.00" },
-            { label: "Insurance Coverage", value: "-$160.00" },
-            { label: "Patient Copay", value: "$45.00" },
-          ],
-          total: true,
         },
       });
-      doc.doc_date = "2026-11-18";
-      doc.category = "Medical";
-      doc.labels = ["Medical"];
-      doc.title = "Dental Checkup & Hygiene Receipt";
+      doc.doc_date = preset.doc_date;
+      doc.category = preset.category;
+      doc.labels = preset.category.split("/").filter(Boolean);
+      doc.title = preset.title;
       syncDocPaths(doc);
       return jsonResponse({
         processed: 1,
         filed: 1,
+        queued: 0,
+        skipped: 0,
         review: 0,
+        pending_reviews: db.reviewItems.length,
+        cancelled: false,
+        waiting_for_model: 0,
         documents: [doc],
         document: doc,
         watcher: buildWatcherSnapshot(),
@@ -1137,8 +1255,12 @@
       const created = uploadedNames.map((name) => addNewDemoDocument({ filename: name, sourceMode: "upload" }));
       return jsonResponse({
         accepted: created.length,
+        queued_count: created.length,
         filed: created.length,
         review: 0,
+        pending_reviews: db.reviewItems.length,
+        rejected: [],
+        waiting_for_model: 0,
         documents: created,
         watcher: buildWatcherSnapshot(),
       });
@@ -1323,6 +1445,36 @@
         db.docs.splice(idx, 1);
         return jsonResponse({ deleted: true });
       }
+    }
+
+    if (path === "/api/documents/batch/reclassify" && method === "POST") {
+      const blocked = demoQuotaErrorResponse();
+      if (blocked) return blocked;
+      const body = await parseBody(init);
+      const rawIds = Array.isArray(body.doc_ids) ? body.doc_ids : (body.document_ids || []);
+      const ids = new Set(rawIds.map(Number));
+      const matched = db.docs.filter((d) => ids.has(d.id));
+      if (!matched.length) {
+        return jsonResponse({ detail: "No matching documents found to reclassify." }, 404);
+      }
+      const watcher = buildWatcherSnapshot();
+      watcher.scan_queue = matched.map((d) => ({
+        job_type: "reclassify",
+        document_id: d.id,
+        filename: d.title || d.original_filename || `Document #${d.id}`,
+        source_path: `reclassify:${d.id}`,
+        status: "unchanged",
+        stage_message: "Demo AI re-verified existing metadata against local rules.",
+        confidence: d.confidence ?? 0.95,
+        preview_images: [...(d.preview_images || [])],
+        result_path: d.vault_rel_path || "",
+        category: d.category || "",
+      }));
+      return jsonResponse({
+        queued: watcher.scan_queue,
+        queued_count: watcher.scan_queue.length,
+        watcher,
+      });
     }
 
     if (path === "/api/documents/batch/delete" && method === "POST") {
@@ -1725,4 +1877,29 @@
       if (btn) btn.click();
     },
   };
+
+  function bindDemoScanButtonLabel() {
+    if (typeof document.getElementById !== "function") return;
+    const scanBtn = document.getElementById("scan-now-btn");
+    if (!scanBtn) return;
+    const syncLabel = () => {
+      const current = String(scanBtn.textContent || "").trim();
+      if (!current || current === "Scan Now") {
+        scanBtn.textContent = "Simulate scan";
+      }
+    };
+    syncLabel();
+    if (typeof MutationObserver === "function") {
+      const observer = new MutationObserver(syncLabel);
+      observer.observe(scanBtn, { childList: true, characterData: true, subtree: true });
+    }
+  }
+
+  if (typeof document.addEventListener === "function") {
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", bindDemoScanButtonLabel);
+    } else {
+      bindDemoScanButtonLabel();
+    }
+  }
 })();

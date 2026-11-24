@@ -2,7 +2,6 @@
   "use strict";
 
   const THEME_STORAGE_KEY = "dv_site_theme";
-  const CURRENCY_STORAGE_KEY = "dv_site_currency";
   const VALID_CURRENCIES = new Set(["USD", "EUR", "CHF"]);
   const EUR_REGION_CODES = new Set([
     "AT", "BE", "CY", "DE", "EE", "ES", "FI", "FR", "GR", "HR",
@@ -20,7 +19,6 @@
 
   let currentPayload = null;
   let activeReleaseTab = "latest";
-  let currentCurrency = "USD";
 
   function $(id) {
     return document.getElementById(id);
@@ -136,6 +134,19 @@
         btn.setAttribute("data-polar-checkout-theme", resolved);
       }
     });
+
+    const iframe = $("live-demo-iframe");
+    if (iframe) {
+      try {
+        const ctrl = iframe.contentWindow && iframe.contentWindow.__dvDemoControl;
+        if (ctrl && typeof ctrl.setTheme === "function") {
+          ctrl.setTheme(resolved);
+          updateWinThemeBtnLabel(iframe);
+        }
+      } catch {
+        // ignore cross-origin or uninitialized iframe
+      }
+    }
   }
 
   function initThemeControls() {
@@ -590,38 +601,76 @@
     }
   }
 
-  /* ---------- Pricing & Currency Switcher ---------- */
-  function detectPreferredCurrency() {
+  /* ---------- Pricing & Locale Currency Detection ---------- */
+  function extractLocaleRegion(localeTag) {
+    const raw = String(localeTag || "").trim();
+    if (!raw) return "";
     try {
-      const saved = localStorage.getItem(CURRENCY_STORAGE_KEY);
-      if (VALID_CURRENCIES.has(saved)) return saved;
+      if (typeof Intl !== "undefined" && typeof Intl.Locale === "function") {
+        const parsed = new Intl.Locale(raw);
+        if (parsed.region) return parsed.region.toUpperCase();
+      }
     } catch {
-      // ignore storage errors
+      // ignore invalid locale tags
     }
+    const base = raw.split(/[-_]u[-_]|@/i)[0];
+    const parts = base.split(/[-_]/);
+    for (let i = parts.length - 1; i >= 1; i -= 1) {
+      if (/^[A-Za-z]{2}$/.test(parts[i])) return parts[i].toUpperCase();
+    }
+    return "";
+  }
+
+  function currencyForRegion(region) {
+    if (region === "CH" || region === "LI") return "CHF";
+    if (EUR_REGION_CODES.has(region)) return "EUR";
+    return "";
+  }
+
+  function detectPreferredCurrency() {
+    let resolvedLocale = "";
+    let timeZone = "";
     try {
-      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
-      if (tz === "Europe/Zurich" || tz === "Europe/Busingen" || tz === "Europe/Vaduz") return "CHF";
-      if (EUR_TZ_SET.has(tz)) return "EUR";
+      if (typeof Intl !== "undefined" && typeof Intl.DateTimeFormat === "function") {
+        const resolved = Intl.DateTimeFormat().resolvedOptions() || {};
+        resolvedLocale = String(resolved.locale || "");
+        timeZone = String(resolved.timeZone || "");
+      }
     } catch {
       // ignore Intl errors
     }
+
+    const fromResolved = currencyForRegion(extractLocaleRegion(resolvedLocale));
+    if (fromResolved) return fromResolved;
+
+    let langs = [];
     try {
       const nav = typeof navigator !== "undefined" ? navigator : null;
-      const langs =
+      langs =
         nav && Array.isArray(nav.languages) && nav.languages.length
           ? nav.languages
           : nav && nav.language
             ? [nav.language]
             : [];
-      for (const lang of langs) {
-        const parts = String(lang || "").split(/[-_]/);
-        const region = (parts[parts.length - 1] || "").toUpperCase();
-        if (region === "CH" || region === "LI") return "CHF";
-        if (EUR_REGION_CODES.has(region)) return "EUR";
-      }
     } catch {
       // ignore navigator errors
     }
+
+    if (langs.length) {
+      const fromPrimary = currencyForRegion(extractLocaleRegion(langs[0]));
+      if (fromPrimary) return fromPrimary;
+    }
+
+    if (timeZone === "Europe/Zurich" || timeZone === "Europe/Busingen" || timeZone === "Europe/Vaduz") {
+      return "CHF";
+    }
+    if (EUR_TZ_SET.has(timeZone)) return "EUR";
+
+    for (let i = 1; i < langs.length; i += 1) {
+      const fromSecondary = currencyForRegion(extractLocaleRegion(langs[i]));
+      if (fromSecondary) return fromSecondary;
+    }
+
     return "USD";
   }
 
@@ -633,17 +682,8 @@
     return `$${n}`;
   }
 
-  function applyCurrency(currency, persist = true) {
+  function applyCurrency(currency) {
     const next = VALID_CURRENCIES.has(currency) ? currency : "USD";
-    currentCurrency = next;
-
-    if (persist) {
-      try {
-        localStorage.setItem(CURRENCY_STORAGE_KEY, next);
-      } catch {
-        // ignore storage errors
-      }
-    }
 
     const priceSpecs = [
       ["price-free", 0],
@@ -655,15 +695,6 @@
       if (!el) continue;
       const amt = el.dataset && el.dataset.amount !== undefined ? el.dataset.amount : fallbackAmount;
       el.textContent = formatCurrencyAmount(next, amt);
-    }
-
-    const buttons = document.querySelectorAll("#pricing-currency-switch .currency-opt-btn");
-    if (buttons && typeof buttons.forEach === "function") {
-      buttons.forEach((btn) => {
-        const active = btn.dataset && btn.dataset.currency === next;
-        btn.classList.toggle("is-active", Boolean(active));
-        btn.setAttribute("aria-pressed", active ? "true" : "false");
-      });
     }
   }
 
@@ -682,8 +713,17 @@
       const url = meta ? String(meta.getAttribute("content") || "").trim() : "";
       if (url && /^https?:\/\//i.test(url)) {
         btn.setAttribute("href", url);
-        btn.setAttribute("data-polar-checkout", "");
-        btn.setAttribute("data-polar-checkout-theme", resolvedTheme);
+        const host = String(window.location.hostname || "").toLowerCase();
+        const canEmbedPolar =
+          window.location.protocol === "https:" &&
+          (host === "document-vault.app" || host.endsWith(".document-vault.app"));
+        if (canEmbedPolar) {
+          btn.setAttribute("data-polar-checkout", "");
+          btn.setAttribute("data-polar-checkout-theme", resolvedTheme);
+        } else {
+          btn.removeAttribute("data-polar-checkout");
+          btn.removeAttribute("data-polar-checkout-theme");
+        }
         btn.setAttribute("target", "_blank");
         btn.setAttribute("rel", "noopener");
       } else {
@@ -709,13 +749,7 @@
   }
 
   function initPricing() {
-    applyCurrency(detectPreferredCurrency(), false);
-    const buttons = document.querySelectorAll("#pricing-currency-switch .currency-opt-btn");
-    if (buttons && typeof buttons.forEach === "function") {
-      buttons.forEach((btn) => {
-        btn.addEventListener("click", () => applyCurrency(btn.dataset.currency || "USD"));
-      });
-    }
+    applyCurrency(detectPreferredCurrency());
     configureCheckoutLinks();
   }
 

@@ -37,7 +37,8 @@
       }
     })();
   </script>
-  <link rel="stylesheet" href="./styles.css?v=20261123c" />
+  <link rel="stylesheet" href="./styles.css?v=20261123j" />
+  <link rel="stylesheet" href="./demo.css" />
 </head>
 <body>
   <header class="topbar">
@@ -491,31 +492,46 @@
             </div>
           </div>
 
-          <div class="field">
-            <span>Guided Labels &amp; Sub-labels <small class="muted">(use <code>Parent/Sub-label</code> for hierarchy; click + to add a sub-label or ✎ to rename)</small></span>
-            <div id="category-chips" class="chip-list"></div>
-            <div class="inline-input" style="max-width:420px;">
-              <input id="new-category-input" type="text" placeholder="Add label or sub-label (e.g. Housing/Internet)" />
-              <button id="add-category-btn" class="btn btn-secondary btn-sm" type="button">Add</button>
+          <div class="taxonomy-card-columns">
+            <div class="field taxonomy-col-labels">
+              <div class="taxonomy-tree-header">
+                <div>
+                  <div class="taxonomy-title-row">
+                    <span class="taxonomy-section-title">Guided Labels &amp; Sub-labels</span>
+                    <span id="category-count-badge" class="taxonomy-count-pill hidden"></span>
+                  </div>
+                  <div class="muted" style="font-size:11.5px;">Click a label to rename/merge, or hover for actions.</div>
+                </div>
+                <button id="toggle-all-categories-btn" class="btn btn-secondary btn-xs hidden" type="button">Collapse all</button>
+              </div>
+              <input id="category-filter-input" class="category-filter-input hidden" type="search" placeholder="Filter labels…" aria-label="Filter labels" />
+              <div id="category-chips" class="category-tree" role="tree" aria-label="Guided labels hierarchy"></div>
+              <div class="inline-input">
+                <input id="new-category-input" type="text" placeholder="Add category or path (e.g. Housing/Internet)" />
+                <button id="add-category-btn" class="btn btn-secondary btn-sm" type="button">Add</button>
+              </div>
             </div>
-          </div>
 
-          <div class="filing-rules-section">
+            <div class="taxonomy-col-rules-masks">
+              <div class="filing-rules-section">
             <div class="filing-rules-head">
               <div>
-                <span class="filing-rules-title">Filing Rules</span>
-                <span class="muted" style="font-size:12px;">Teach the organizer where specific senders or document types belong.</span>
+                <div class="taxonomy-title-row">
+                  <span class="filing-rules-title">Filing Rules</span>
+                  <span id="filing-rules-count-badge" class="taxonomy-count-pill hidden"></span>
+                </div>
+                <div class="muted" style="font-size:11.5px;">Teach the organizer where specific senders or document types belong.</div>
               </div>
               <button id="add-rule-toggle-btn" class="btn btn-secondary btn-xs" type="button">+ Add Rule</button>
             </div>
             <div id="add-rule-form" class="add-rule-form hidden">
               <div class="add-rule-grid">
                 <label class="field">
-                  <span>Match Keywords <small class="muted">(comma-separated, optional)</small></span>
+                  <span>Match Keywords <small class="muted">(optional)</small></span>
                   <input id="rule-keywords-input" type="text" placeholder="e.g. Telekom, Swisscom" />
                 </label>
                 <label class="field">
-                  <span>Or Document Description <small class="muted">(for AI)</small></span>
+                  <span>AI Description <small class="muted">(optional)</small></span>
                   <input id="rule-instruction-input" type="text" placeholder="e.g. Monthly internet &amp; mobile bills" />
                 </label>
                 <label class="field">
@@ -576,10 +592,21 @@
                 </select>
               </label>
 
+              <label class="field">
+                <span>Title Separator</span>
+                <select id="set-title-separator">
+                  <option value="space">Spaces (Acme Utility Bill)</option>
+                  <option value="underscore">Underscores (Acme_Utility_Bill)</option>
+                  <option value="hyphen">Hyphens (Acme-Utility-Bill)</option>
+                </select>
+              </label>
+
               <div class="path-preview-box">
                 <span class="muted">Example Vault Path:</span>
                 <code id="settings-path-preview">Finance/2026/2026-03-14 Acme Utility Bill.pdf</code>
               </div>
+            </div>
+            </div>
             </div>
           </div>
         </div>
@@ -866,14 +893,7 @@
         <div id="license-active-panel" class="license-active-panel hidden"></div>
 
         <div id="license-plans-section" class="license-plans-section">
-          <div class="license-plans-toolbar">
-            <span class="muted" style="font-size:12px;">Price currency display (Polar applies your local currency &amp; VAT at checkout):</span>
-            <div id="license-currency-switch" class="license-currency-switch" role="group" aria-label="Currency selection">
-              <button type="button" class="currency-opt-btn" data-currency="USD" aria-pressed="true">$ USD</button>
-              <button type="button" class="currency-opt-btn" data-currency="EUR" aria-pressed="false">€ EUR</button>
-              <button type="button" class="currency-opt-btn" data-currency="CHF" aria-pressed="false">CHF</button>
-            </div>
-          </div>
+          <p class="muted" style="margin:0; font-size:12px;">Prices shown in your local currency (Polar applies your local currency &amp; VAT at checkout).</p>
           <div id="license-plans-grid" class="license-plans-grid"></div>
         </div>
 
@@ -913,6 +933,6 @@
 
   <div id="toast-container" class="toast-container"></div>
   <script src="./demo-server.js"></script>
-  <script type="module" src="./js/main.js?v=20261123c"></script>
+  <script type="module" src="./js/main.js?v=20261123j"></script>
 </body>
 </html>

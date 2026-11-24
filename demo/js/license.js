@@ -1,7 +1,7 @@
 /** Free-tier quota indicator, multi-currency plans, purchase modal, and license activation. */
 
 import { closeAnimatedModal, showAnimatedModal } from "./modals.js";
-import { $, $$, state } from "./state.js";
+import { $, state } from "./state.js";
 import {
   api,
   esc,
@@ -11,8 +11,6 @@ import {
 import { refreshHealth } from "./vlm.js";
 
 // ── Licensing & Free-Tier Quota UI ───────────────────────────────────────
-const LICENSE_CURRENCY_KEY = "dv_preferred_currency";
-const VALID_LICENSE_CURRENCIES = new Set(["USD", "EUR", "CHF"]);
 const EUR_REGION_CODES = new Set([
   "AT", "BE", "CY", "DE", "EE", "ES", "FI", "FR", "GR", "HR",
   "IE", "IT", "LT", "LU", "LV", "MT", "NL", "PT", "SI", "SK",
@@ -25,55 +23,75 @@ const EUR_TZ_SET = new Set([
   "Europe/Vilnius", "Europe/Valletta", "Europe/Nicosia", "Europe/Zagreb",
 ]);
 
-function detectPreferredCurrency() {
+function extractLocaleRegion(localeTag) {
+  const raw = String(localeTag || "").trim();
+  if (!raw) return "";
   try {
-    const saved = localStorage.getItem(LICENSE_CURRENCY_KEY);
-    if (VALID_LICENSE_CURRENCIES.has(saved)) return saved;
+    if (typeof Intl !== "undefined" && typeof Intl.Locale === "function") {
+      const parsed = new Intl.Locale(raw);
+      if (parsed.region) return parsed.region.toUpperCase();
+    }
   } catch {
-    // ignore storage errors
+    // ignore invalid locale tags
   }
+  const base = raw.split(/[-_]u[-_]|@/i)[0];
+  const parts = base.split(/[-_]/);
+  for (let i = parts.length - 1; i >= 1; i -= 1) {
+    if (/^[A-Za-z]{2}$/.test(parts[i])) return parts[i].toUpperCase();
+  }
+  return "";
+}
+
+function currencyForRegion(region) {
+  if (region === "CH" || region === "LI") return "CHF";
+  if (EUR_REGION_CODES.has(region)) return "EUR";
+  return "";
+}
+
+function detectPreferredCurrency() {
+  let resolvedLocale = "";
+  let timeZone = "";
   try {
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
-    if (tz === "Europe/Zurich" || tz === "Europe/Busingen" || tz === "Europe/Vaduz") return "CHF";
-    if (EUR_TZ_SET.has(tz)) return "EUR";
+    if (typeof Intl !== "undefined" && typeof Intl.DateTimeFormat === "function") {
+      const resolved = Intl.DateTimeFormat().resolvedOptions() || {};
+      resolvedLocale = String(resolved.locale || "");
+      timeZone = String(resolved.timeZone || "");
+    }
   } catch {
     // ignore Intl errors
   }
+
+  const fromResolved = currencyForRegion(extractLocaleRegion(resolvedLocale));
+  if (fromResolved) return fromResolved;
+
+  let langs = [];
   try {
-    const langs =
+    langs =
       Array.isArray(navigator?.languages) && navigator.languages.length
         ? navigator.languages
         : navigator?.language
           ? [navigator.language]
           : [];
-    for (const lang of langs) {
-      const parts = String(lang || "").split(/[-_]/);
-      const region = (parts[parts.length - 1] || "").toUpperCase();
-      if (region === "CH" || region === "LI") return "CHF";
-      if (EUR_REGION_CODES.has(region)) return "EUR";
-    }
   } catch {
     // ignore navigator errors
   }
+
+  if (langs.length) {
+    const fromPrimary = currencyForRegion(extractLocaleRegion(langs[0]));
+    if (fromPrimary) return fromPrimary;
+  }
+
+  if (timeZone === "Europe/Zurich" || timeZone === "Europe/Busingen" || timeZone === "Europe/Vaduz") {
+    return "CHF";
+  }
+  if (EUR_TZ_SET.has(timeZone)) return "EUR";
+
+  for (let i = 1; i < langs.length; i += 1) {
+    const fromSecondary = currencyForRegion(extractLocaleRegion(langs[i]));
+    if (fromSecondary) return fromSecondary;
+  }
+
   return "USD";
-}
-
-function getSelectedCurrency() {
-  if (!VALID_LICENSE_CURRENCIES.has(state.selectedCurrency)) {
-    state.selectedCurrency = detectPreferredCurrency();
-  }
-  return state.selectedCurrency;
-}
-
-function setSelectedCurrency(currency) {
-  const next = VALID_LICENSE_CURRENCIES.has(currency) ? currency : "USD";
-  state.selectedCurrency = next;
-  try {
-    localStorage.setItem(LICENSE_CURRENCY_KEY, next);
-  } catch {
-    // ignore storage errors
-  }
-  renderLicenseModalContent();
 }
 
 function formatPlanPrice(currency, amount) {
@@ -277,7 +295,7 @@ function renderLicenseModalContent({ reason = "" } = {}) {
   const freeLimit = Math.max(1, Number(lic.free_limit ?? 30));
   const processed = Math.max(0, Number(lic.processed_count ?? 0));
   const pct = Math.min(100, Math.round((processed / freeLimit) * 100));
-  const currency = getSelectedCurrency();
+  const currency = detectPreferredCurrency();
 
   const titleEl = $("#license-modal-title");
   const subtitleEl = $("#license-modal-subtitle");
@@ -352,12 +370,6 @@ function renderLicenseModalContent({ reason = "" } = {}) {
     quotaBar.classList.toggle("is-limit", isLimit);
   }
 
-  $$("#license-currency-switch .currency-opt-btn").forEach((btn) => {
-    const active = btn.dataset.currency === currency;
-    btn.classList.toggle("is-active", active);
-    btn.setAttribute("aria-pressed", String(active));
-  });
-
   const plans = Array.isArray(lic.plans) && lic.plans.length ? lic.plans : getDefaultLicensePlans();
   if (plansGrid) {
     plansGrid.innerHTML = plans
@@ -377,14 +389,23 @@ function renderLicenseModalContent({ reason = "" } = {}) {
         } else {
           ctaHtml = `<button type="button" class="btn ${isPopular ? "btn-primary" : "btn-secondary"} license-plan-cta license-buy-unconfigured-btn" data-plan-name="${esc(plan.name)}">Buy ${esc(plan.name)}</button>`;
         }
+        const popularBadgeHtml =
+          isPopular && plan.badge
+            ? `<span class="license-popular-badge">${esc(plan.badge)}</span>`
+            : "";
+        const inlineBadgeHtml =
+          !isPopular && plan.badge
+            ? `<span class="tag tag-info license-plan-badge">${esc(plan.badge)}</span>`
+            : "";
         return `
           <div class="license-plan-card ${isPopular ? "is-popular" : ""}">
+            ${popularBadgeHtml}
             <div class="license-plan-head">
               <div>
                 <div class="license-plan-name">${esc(plan.name)}</div>
                 <div class="muted" style="font-size:12px;">${esc(plan.subtitle || "")}</div>
               </div>
-              ${plan.badge ? `<span class="tag tag-info">${esc(plan.badge)}</span>` : ""}
+              ${inlineBadgeHtml}
             </div>
             <div class="license-plan-price">
               <span class="license-price-amount">${esc(priceStr)}</span>
@@ -511,7 +532,4 @@ export function initLicenseListeners() {
   $("#license-modal-close")?.addEventListener("click", closeLicenseModal);
   $("#license-modal-backdrop")?.addEventListener("click", closeLicenseModal);
   $("#license-activate-form")?.addEventListener("submit", submitLicenseActivation);
-  $$("#license-currency-switch .currency-opt-btn").forEach((btn) => {
-    btn.addEventListener("click", () => setSelectedCurrency(btn.dataset.currency || "USD"));
-  });
 }

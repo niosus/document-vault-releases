@@ -120,6 +120,7 @@ const QUEUE_STATUS_META = {
   reclassified: { label: "Reclassified", cls: "tag-ok" },
   unchanged: { label: "Unchanged", cls: "" },
   queued: { label: "Needs Review", cls: "tag-warn" },
+  resolved: { label: "Resolved", cls: "tag-ok" },
   skipped: { label: "Skipped", cls: "" },
   cancelled: { label: "Stopped", cls: "tag-danger" },
   license_required: { label: "License Needed", cls: "tag-warn" },

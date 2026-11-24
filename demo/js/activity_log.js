@@ -17,6 +17,7 @@ import { openFullFilePreview } from "./viewer.js";
 const ACTIVITY_KIND_META = {
   filed: { label: "Filed", cls: "tag-ok" },
   queued: { label: "Needs Review", cls: "tag-warn" },
+  resolved: { label: "Resolved", cls: "tag-ok" },
   error: { label: "Error", cls: "tag-danger" },
   stopped: { label: "Stopped", cls: "tag-danger" },
   watcher: { label: "Watcher", cls: "tag-info" },
@@ -32,7 +33,9 @@ export function renderActivityLog(items, lastScanAt) {
   state.latestActivity = items || [];
   const filtered = state.latestActivity.filter((entry) => {
     if (state.activityFilter === "filed") return entry.kind === "filed" || entry.kind === "reclassified";
-    if (state.activityFilter === "attention") return entry.kind !== "filed" && entry.kind !== "reclassified";
+    if (state.activityFilter === "attention") {
+      return entry.kind !== "filed" && entry.kind !== "reclassified" && entry.kind !== "resolved";
+    }
     return true;
   });
 
@@ -157,12 +160,17 @@ export function renderActivityLog(items, lastScanAt) {
     } else {
       const meta = ACTIVITY_KIND_META[entry.kind] || { label: entry.kind, cls: "" };
       const confBadge = renderConfidenceTag(entry.confidence);
+      const reasonCls = entry.kind === "resolved" ? "tag-subtle" : "tag-warn";
       const reasonsHtml = (entry.review_reasons || [])
-        .map((r) => `<span class="tag tag-warn">${esc(REASON_LABELS[r] || r)}</span>`)
+        .map((r) => `<span class="tag ${reasonCls}">${esc(REASON_LABELS[r] || r)}</span>`)
         .join("");
+      const dotHtml =
+        entry.kind === "resolved" || entry.kind === "stopped"
+          ? ""
+          : `<span class="activity-status-dot"></span>`;
       li.className = `activity-row activity-row-event activity-kind-${esc(entry.kind)}`;
       li.innerHTML = `
-        <span class="activity-status-dot"></span>
+        ${dotHtml}
         <div class="activity-main">
           <div class="activity-top-line">
             <span class="tag ${meta.cls}">${esc(meta.label)}</span>

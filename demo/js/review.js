@@ -236,6 +236,7 @@ function renderReviewCard(item) {
       removeCardSmoothly(card, () => {
         if (!$("#review-list").children.length) renderEmptyReview();
       });
+      refreshHealth();
     } catch (err) {
       toast(err.message, true);
       approveBtn.disabled = false;
