@@ -3,6 +3,37 @@
   <channel>
     <title>Document Vault</title>
     <item>
+      <title>Version 0.3.9</title>
+      <pubDate>Tue, 24 Nov 2026 00:16:11 +0000</pubDate>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <sparkle:channel>prerelease</sparkle:channel>
+      <description>Document Vault v0.3.9 introduces hierarchical document labels, portable filing rules, progressive multi-page AI extraction, decoupled reclassification confidence gating, a redesigned Settings tree, Polar.sh licensing, and the updated document-vault.app website.
+
+### Classification, Reclassification &amp; AI Extraction
+- Hierarchical label paths (Parent/Sub-label) with disk-first folder inference, subtree prefix filtering, and two-tier Vault navigation (#1)
+- Non-blocking Suggested Labels bar and Bundle Inspector modal to review, rename, override, or preview grouped new label suggestions without blocking filing (#1)
+- Vault-portable Filing Rules in .document_vault/vault.json with deterministic keyword rules, VLM prompt rules, and 1-click rule creation from Review, Edit, Batch Move, Bundle Inspector, and Settings (#1)
+- Progressive multi-page PDF scanning (Page 1, last page, then intermediate pages up to 12 pages) with grounded reliability checks across embedded text, 2-digit years, and future-date windows (#1)
+- Decoupled label and date confidence gating during AI reclassification so low date confidence never blocks label updates (and vice versa), plus faster Category Tag Only reclassification (#22)
+- Preserved pre-rotation SHA-256 hashes across page rotations so re-uploading an unrotated original still catches duplicates (#16)
+
+### Vault UI, Settings &amp; Filenames
+- Redesigned Settings categories as an indented hierarchical tree with smooth expand/collapse animations, hover/focus actions, a two-column Taxonomy &amp; Naming Masks layout, and automatic filtering for 10+ labels (#19)
+- Configurable Title Separator setting (space, underscore, or hyphen) applied across intake previews, approvals, edits, batch moves, and disk-first vault recovery (#18)
+- Click anywhere on Vault document cards to open preview, card-only hover lift animation, and unified single-document Reclassify with AI workflow with live queue progress (#17)
+- Fixed VLM model popover stacking above tabs, floating pills, and notifications (#14)
+- Marked resolved Review/Needs Attention activity rows cleanly and refreshed the UI immediately on dismiss (#16)
+
+### Licensing, Website &amp; Auto-Updates
+- Integrated Polar.sh 30-document free tier, license key activation/validation, and live locale/timezone currency detection (USD, EUR, CHF) (#1, #15, #16, #20)
+- Serving product website, interactive Demo Document Vault, and Sparkle appcast feed on document-vault.app (#13, #21)
+
+### Architecture &amp; Quality
+- Modularized backend services, FastAPI routers, schemas, and native ES/CSS frontend modules with strict architecture line budgets and import boundaries (#7, #8, #9, #10, #12)
+- Added unified verification suite, Playwright Chromium/WebKit visual benchmarks, real-document corpus pipeline checks, and MLX VLM evaluation harness (#2, #3, #4, #5)</description>
+      <enclosure url="https://github.com/niosus/document-vault-releases/releases/download/v0.3.9/Document-Vault-0.3.9-arm64-unsigned.dmg" sparkle:version="0.3.9" sparkle:shortVersionString="0.3.9" length="369940344" type="application/octet-stream" sparkle:edSignature="TS57dFrpP7KVAK/XMrwHY+BWq0m8rKhnZMCum7+/r6AsllFZuD+6FCvO1upKuuo9ZNn1Mhtrkn3UbH1Qg5knDw==" />
+    </item>
+    <item>
       <title>Version 0.2.1</title>
       <pubDate>Sat, 21 Nov 2026 23:11:49 +0000</pubDate>
       <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>

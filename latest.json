@@ -1,24 +1,37 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-24T00:03:47Z",
+  "generated_at": "2026-11-24T00:16:51Z",
   "repo": "niosus/document-vault-releases",
   "releases_url": "https://github.com/niosus/document-vault-releases/releases",
   "appcast_url": "https://document-vault.app/appcast.xml",
   "latest": null,
   "prerelease": {
-    "version": "0.2.1",
-    "tag": "v0.2.1",
-    "title": "Document Vault v0.2.1 (Unsigned Preview)",
+    "version": "0.3.9",
+    "tag": "v0.3.9",
+    "title": "Document Vault v0.3.9 (Unsigned Preview)",
     "prerelease": true,
     "signed": false,
-    "published_at": "2026-11-21T23:12:18Z",
-    "dmg_name": "Document-Vault-0.2.1-arm64-unsigned.dmg",
-    "dmg_url": "https://github.com/niosus/document-vault-releases/releases/download/v0.2.1/Document-Vault-0.2.1-arm64-unsigned.dmg",
-    "size_bytes": 368635661,
-    "notes": "Enable Sparkle auto-updates via GitHub Pages.",
-    "release_url": "https://github.com/niosus/document-vault-releases/releases/tag/v0.2.1"
+    "published_at": "2026-11-24T00:16:43Z",
+    "dmg_name": "Document-Vault-0.3.9-arm64-unsigned.dmg",
+    "dmg_url": "https://github.com/niosus/document-vault-releases/releases/download/v0.3.9/Document-Vault-0.3.9-arm64-unsigned.dmg",
+    "size_bytes": 369940344,
+    "notes": "Document Vault v0.3.9 introduces hierarchical document labels, portable filing rules, progressive multi-page AI extraction, decoupled reclassification confidence gating, a redesigned Settings tree, Polar.sh licensing, and the updated document-vault.app website.\n\n### Classification, Reclassification & AI Extraction\n- Hierarchical label paths (Parent/Sub-label) with disk-first folder inference, subtree prefix filtering, and two-tier Vault navigation (#1)\n- Non-blocking Suggested Labels bar and Bundle Inspector modal to review, rename, override, or preview grouped new label suggestions without blocking filing (#1)\n- Vault-portable Filing Rules in .document_vault/vault.json with deterministic keyword rules, VLM prompt rules, and 1-click rule creation from Review, Edit, Batch Move, Bundle Inspector, and Settings (#1)\n- Progressive multi-page PDF scanning (Page 1, last page, then intermediate pages up to 12 pages) with grounded reliability checks across embedded text, 2-digit years, and future-date windows (#1)\n- Decoupled label and date confidence gating during AI reclassification so low date confidence never blocks label updates (and vice versa), plus faster Category Tag Only reclassification (#22)\n- Preserved pre-rotation SHA-256 hashes across page rotations so re-uploading an unrotated original still catches duplicates (#16)\n\n### Vault UI, Settings & Filenames\n- Redesigned Settings categories as an indented hierarchical tree with smooth expand/collapse animations, hover/focus actions, a two-column Taxonomy & Naming Masks layout, and automatic filtering for 10+ labels (#19)\n- Configurable Title Separator setting (space, underscore, or hyphen) applied across intake previews, approvals, edits, batch moves, and disk-first vault recovery (#18)\n- Click anywhere on Vault document cards to open preview, card-only hover lift animation, and unified single-document Reclassify with AI workflow with live queue progress (#17)\n- Fixed VLM model popover stacking above tabs, floating pills, and notifications (#14)\n- Marked resolved Review/Needs Attention activity rows cleanly and refreshed the UI immediately on dismiss (#16)\n\n### Licensing, Website & Auto-Updates\n- Integrated Polar.sh 30-document free tier, license key activation/validation, and live locale/timezone currency detection (USD, EUR, CHF) (#1, #15, #16, #20)\n- Serving product website, interactive Demo Document Vault, and Sparkle appcast feed on document-vault.app (#13, #21)\n\n### Architecture & Quality\n- Modularized backend services, FastAPI routers, schemas, and native ES/CSS frontend modules with strict architecture line budgets and import boundaries (#7, #8, #9, #10, #12)\n- Added unified verification suite, Playwright Chromium/WebKit visual benchmarks, real-document corpus pipeline checks, and MLX VLM evaluation harness (#2, #3, #4, #5)",
+    "release_url": "https://github.com/niosus/document-vault-releases/releases/tag/v0.3.9"
   },
   "history": [
+    {
+      "version": "0.3.9",
+      "tag": "v0.3.9",
+      "title": "Document Vault v0.3.9 (Unsigned Preview)",
+      "prerelease": true,
+      "signed": false,
+      "published_at": "2026-11-24T00:16:43Z",
+      "dmg_name": "Document-Vault-0.3.9-arm64-unsigned.dmg",
+      "dmg_url": "https://github.com/niosus/document-vault-releases/releases/download/v0.3.9/Document-Vault-0.3.9-arm64-unsigned.dmg",
+      "size_bytes": 369940344,
+      "notes": "Document Vault v0.3.9 introduces hierarchical document labels, portable filing rules, progressive multi-page AI extraction, decoupled reclassification confidence gating, a redesigned Settings tree, Polar.sh licensing, and the updated document-vault.app website.\n\n### Classification, Reclassification & AI Extraction\n- Hierarchical label paths (Parent/Sub-label) with disk-first folder inference, subtree prefix filtering, and two-tier Vault navigation (#1)\n- Non-blocking Suggested Labels bar and Bundle Inspector modal to review, rename, override, or preview grouped new label suggestions without blocking filing (#1)\n- Vault-portable Filing Rules in .document_vault/vault.json with deterministic keyword rules, VLM prompt rules, and 1-click rule creation from Review, Edit, Batch Move, Bundle Inspector, and Settings (#1)\n- Progressive multi-page PDF scanning (Page 1, last page, then intermediate pages up to 12 pages) with grounded reliability checks across embedded text, 2-digit years, and future-date windows (#1)\n- Decoupled label and date confidence gating during AI reclassification so low date confidence never blocks label updates (and vice versa), plus faster Category Tag Only reclassification (#22)\n- Preserved pre-rotation SHA-256 hashes across page rotations so re-uploading an unrotated original still catches duplicates (#16)\n\n### Vault UI, Settings & Filenames\n- Redesigned Settings categories as an indented hierarchical tree with smooth expand/collapse animations, hover/focus actions, a two-column Taxonomy & Naming Masks layout, and automatic filtering for 10+ labels (#19)\n- Configurable Title Separator setting (space, underscore, or hyphen) applied across intake previews, approvals, edits, batch moves, and disk-first vault recovery (#18)\n- Click anywhere on Vault document cards to open preview, card-only hover lift animation, and unified single-document Reclassify with AI workflow with live queue progress (#17)\n- Fixed VLM model popover stacking above tabs, floating pills, and notifications (#14)\n- Marked resolved Review/Needs Attention activity rows cleanly and refreshed the UI immediately on dismiss (#16)\n\n### Licensing, Website & Auto-Updates\n- Integrated Polar.sh 30-document free tier, license key activation/validation, and live locale/timezone currency detection (USD, EUR, CHF) (#1, #15, #16, #20)\n- Serving product website, interactive Demo Document Vault, and Sparkle appcast feed on document-vault.app (#13, #21)\n\n### Architecture & Quality\n- Modularized backend services, FastAPI routers, schemas, and native ES/CSS frontend modules with strict architecture line budgets and import boundaries (#7, #8, #9, #10, #12)\n- Added unified verification suite, Playwright Chromium/WebKit visual benchmarks, real-document corpus pipeline checks, and MLX VLM evaluation harness (#2, #3, #4, #5)",
+      "release_url": "https://github.com/niosus/document-vault-releases/releases/tag/v0.3.9"
+    },
     {
       "version": "0.2.1",
       "tag": "v0.2.1",
