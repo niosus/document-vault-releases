@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const APP_VERSION = "0.3.8";
+  const APP_VERSION = "0.3.9";
   const DEFAULT_CATEGORIES = [
     "Finance",
     "Taxes",
